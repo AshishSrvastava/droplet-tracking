@@ -1,0 +1,1 @@
+cv2.imwrite("mask.bmp", mask)
