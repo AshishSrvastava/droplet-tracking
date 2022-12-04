@@ -29,7 +29,7 @@ out = cv2.VideoWriter("output.avi", fourcc, 20.0, (1920, 1080))
 # Output data for graphing
 position_data_file = "droplet_posn.txt"
 with open(position_data_file, "w") as file:
-    file.write(f"frame \t x \t y \n")
+    file.write(f"frame \t x \t y \t deformation \n") # added deformation column to file header
 
 while cap.isOpened:
     ret, frame = cap.read()
@@ -62,23 +62,27 @@ while cap.isOpened:
 
         if area > 1600:
             cv2.drawContours(frame, contour, -1, (0, 0, 255), 3)
+            
+            # Calculate the minimum bounding rectangle of the contour
+            rect = cv2.minAreaRect(contour)
+            # get dimensions of rectangle
+            width, height = rect[1]
+            # Calculate the Taylor deformation parameter
+            deformation = width / height
+            # output deformation parameter to a file, along with frame number and droplet position
+            with open(position_data_file, "a") as file:
+                frame_num = cap.get(cv2.CAP_PROP_POS_FRAMES)
+                # calculate moments of contour
+                M = cv2.moments(contour)
+                center_x = round(M["m10"] / M["m00"])
+                center_y = round(M["m01"] / M["m00"])
+                if center_y > 600:
+                    file.write(f"{frame_num} \t {center_x} \t {center_y} \t {deformation} \n")
 
             if cv2.isContourConvex(contour):
                 print(f"Contour is convex")
             # Calculate image moments of the detected contour
             M = cv2.moments(contour)
-
-            # Print center (debugging):
-            # print("center X : '{}'".format(round(M['m10'] / M['m00'])))
-            # print("center Y : '{}'".format(round(M['m01'] / M['m00'])))
-
-            center_x = round(M["m10"] / M["m00"])
-            center_y = round(M["m01"] / M["m00"])
-            frame_num = cap.get(cv2.CAP_PROP_POS_FRAMES)
-
-            if center_y > 600:
-                with open(position_data_file, "a") as file:
-                    file.write(f"{int(frame_num)} \t {center_x} \t {center_y} \n")
 
             # Draw a circle based centered at centroid coordinates
             cv2.circle(
