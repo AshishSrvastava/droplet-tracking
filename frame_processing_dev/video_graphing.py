@@ -26,9 +26,9 @@ fourcc = cv2.VideoWriter_fourcc("D", "I", "V", "X")
 out = cv2.VideoWriter("output.avi", fourcc, 20.0, (1920, 1080))
 
 # Output data for graphing
-position_data_file = "droplet_posn.txt"
+position_data_file = "droplet_posn_time.txt"
 with open(position_data_file, "w") as file:
-    file.write(f"frame \t x \t y \t deformation \n") # added deformation column to file header
+    file.write(f"frame \t x \t y \t width \t height \t deformation \n") # added deformation column to file header
 
 while cap.isOpened:
     ret, frame = cap.read()
@@ -59,7 +59,7 @@ while cap.isOpened:
     mask = cv2.inRange(hsv, lower_blue, upper_blue)
 
     # Find contours 
-    contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+    contours, hierarchy = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     # all contours
     cv2.drawContours(frame, contours, -1, (0, 255, 0), 1)
@@ -75,10 +75,25 @@ while cap.isOpened:
             
             # Calculate the minimum bounding rectangle of the contour
             rect = cv2.minAreaRect(contour)
+            # Get corner points of rectangle
+            box = cv2.boxPoints(rect)
+            # convert the corner points to integers
+            box = np.int0(box)
+            # Draw the bounding rectangle on the frame
+            cv2.drawContours(frame, [box], 0, (0, 0, 255), 2)
             # get dimensions of rectangle
             width, height = rect[1]
+            L_maj, L_min = max(width, height), min(width, height)
+            print(f"L_maj: {L_maj} \t L_min: {L_min} \n")
+            # # Put text on the frame to indicate width and height
+            # cv2.putText(frame, f"width: {width}", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+            # cv2.putText(frame, f"height: {height}", (x, y + height + 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+            
             # Calculate the Taylor deformation parameter
-            deformation = width / height
+            # D_T = \frac{L_maj-L_min}{L_maj+L_min}
+            # L_maj = major axis length (width)
+            # L_min = minor axis length (height)
+            deformation = (L_maj - L_min)/(L_min + L_min)
             # output deformation parameter to a file, along with frame number and droplet position
             with open(position_data_file, "a") as file:
                 frame_num = cap.get(cv2.CAP_PROP_POS_FRAMES)
@@ -87,7 +102,7 @@ while cap.isOpened:
                 center_x = round(M["m10"] / M["m00"])
                 center_y = round(M["m01"] / M["m00"])
                 if center_y > 600:
-                    file.write(f"{frame_num} \t {center_x} \t {center_y} \t {deformation} \n")
+                    file.write(f"{frame_num} \t {center_x} \t {center_y} \t {width} \t {height} \t {deformation} \n")
 
             if cv2.isContourConvex(contour):
                 print(f"Contour is convex")
@@ -110,7 +125,7 @@ while cap.isOpened:
     # concatenate all frames into a single image for display
     # convert the 2d contour image to 3d image by copying same image to 3rd channel
     mask_3ch = cv2.merge((mask, mask, mask))
-    video_image = np.concatenate((blurred_frame, mask_3ch, frame), axis=0)
+    video_image = np.concatenate((blurred_frame, mask_3ch, frame), axis=1)
     # show the image
     cv2.imshow("Video, mask and contour", video_image)
     cv2.waitKey(1)
