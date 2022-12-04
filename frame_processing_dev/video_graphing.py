@@ -12,7 +12,6 @@ import cv2
 import numpy as np
 
 # Input
-# cap = cv2.VideoCapture('0.02mL_15mlmin.avi')
 # below code requires passing in video in terminal 'python 3 video_contours.py '0.02mL_15mlmin.avi'
 input_vid = sys.argv[1]
 cap = cv2.VideoCapture(input_vid)
@@ -36,20 +35,30 @@ while cap.isOpened:
     if not ret:
         print("Can't receive frame (stream end?). Exiting ...")
         break
+    
+    # Get current frame number
+    frame_num = int(cap.get(cv2.CAP_PROP_POS_FRAMES))
+    # Convert frame number to string and add leading zeros
+    # Put frame number in top left corner of frame
+    cv2.rectangle(frame, (0, 0), (100, 30), (0, 0, 0), -1)
+    cv2.putText(frame, str(frame_num), (25, 25), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
 
+    # Convert to grayscale and apply Gaussian blur
     blurred_frame = cv2.GaussianBlur(frame, (5, 5), 0)
 
-    # kernel = np.ones((5,5), np.uint8)
-    # eroded_frame = cv2.erode(blurred_frame, kernel, iterations=1)
+    # Convert to HSV
     hsv = cv2.cvtColor(blurred_frame, cv2.COLOR_BGR2HSV)
 
+    # Define range of color in HSV
     lower_blue = np.array([63, 0, 0])
     upper_blue = np.array([179, 255, 255])
+    # Old values for glycerol droplet
     # (56, 0, 0)
     # 179, 255, 255
 
     mask = cv2.inRange(hsv, lower_blue, upper_blue)
 
+    # Find contours 
     contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
 
     # all contours
@@ -58,7 +67,8 @@ while cap.isOpened:
     # contour filtering
     for contour in contours:
         area = cv2.contourArea(contour)
-        print(f"Area: {area}")
+        # For area debugging
+        # print(f"Area: {area}")
 
         if area > 1600:
             cv2.drawContours(frame, contour, -1, (0, 0, 255), 3)
@@ -96,8 +106,14 @@ while cap.isOpened:
     # write the contoured frame
     out.write(frame)
 
-    cv2.imshow("Frame", frame)
-    cv2.imshow("Mask", mask)
+    
+    # concatenate all frames into a single image for display
+    # convert the 2d contour image to 3d image by copying same image to 3rd channel
+    mask_3ch = cv2.merge((mask, mask, mask))
+    video_image = np.concatenate((blurred_frame, mask_3ch, frame), axis=0)
+    # show the image
+    cv2.imshow("Video, mask and contour", video_image)
+    cv2.waitKey(1)
 
     key = cv2.waitKey(100)
     if key == 27:
