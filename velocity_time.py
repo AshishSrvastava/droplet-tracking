@@ -28,7 +28,7 @@ for i in range(1, len(positions)):
     velocities.append(vel)
 
 # write velocities to a file
-with open('velocity_time.txt', 'w') as f:
+with open('drolpet_velocity_time.txt', 'w') as f:
     f.write("frame" + ' ' + "velocity" + '\n')
     for time, vel in zip(times[1:], velocities):
         f.write(str(time) + ' ' + str(vel) + '\n')
