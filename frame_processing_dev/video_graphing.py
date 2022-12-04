@@ -80,20 +80,17 @@ while cap.isOpened:
             # convert the corner points to integers
             box = np.int0(box)
             # Draw the bounding rectangle on the frame
-            cv2.drawContours(frame, [box], 0, (0, 0, 255), 2)
+            cv2.drawContours(frame, [box], 0, (210, 140, 17), 2)
             # get dimensions of rectangle
             width, height = rect[1]
             L_maj, L_min = max(width, height), min(width, height)
             print(f"L_maj: {L_maj} \t L_min: {L_min} \n")
-            # # Put text on the frame to indicate width and height
-            # cv2.putText(frame, f"width: {width}", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
-            # cv2.putText(frame, f"height: {height}", (x, y + height + 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
             
             # Calculate the Taylor deformation parameter
-            # D_T = \frac{L_maj-L_min}{L_maj+L_min}
+
             # L_maj = major axis length (width)
             # L_min = minor axis length (height)
-            deformation = (L_maj - L_min)/(L_min + L_min)
+            deformation = (L_maj - L_min)/(L_maj + L_min)
             # output deformation parameter to a file, along with frame number and droplet position
             with open(position_data_file, "a") as file:
                 frame_num = cap.get(cv2.CAP_PROP_POS_FRAMES)
@@ -117,6 +114,9 @@ while cap.isOpened:
                 (0, 255, 0),
                 -1,
             )
+            
+            if frame_num in [1, 131, 216]:
+                cv2.imwrite(f"frame_{frame_num}.png", frame)
 
     # write the contoured frame
     out.write(frame)
