@@ -43,5 +43,5 @@ with open('droplet_velocity_time.txt', 'w') as f:
         f.write(str(time) + ' ' + str(vel) + ' ' + str(moving_avg) + '\n')
 
 # output a statement showing how to print it
-print("You can view the graph of the input position vs time file and the output velocity vs time file by running the following command in the terminal:")
-print(f"""gnuplot -persist -e "set multiplot layout 1,2; set size square; plot '{input_filename}' every ::2; plot 'velocity_time.txt' every ::2; unset multiplot" """)
+# print("You can view the graph of the input position vs time file and the output velocity vs time file by running the following command in the terminal:")
+print(f"""gnuplot -persist -e "set multiplot layout 1,2; set size square; plot '{input_filename}' every ::2; plot 'droplet_velocity_time.txt' every ::2; unset multiplot" """)
