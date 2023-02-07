@@ -1,7 +1,6 @@
 # TODO: 
 # - Calculate circularity, graph time series of contour circularity
 # - angle adjustment based on channel outline
-# - Taylor deformation parameter graphing over time
 # - try using polydp instead of the jank ass image area thing you're using rn you dumbass
 #       - https://www.authentise.com/post/detecting-circular-shapes-using-contours
 
@@ -28,7 +27,7 @@ out = cv2.VideoWriter("output.avi", fourcc, 20.0, (1920, 1080))
 # Output data for graphing
 position_data_file = "droplet_posn_time.txt"
 with open(position_data_file, "w") as file:
-    file.write(f"frame \t x \t y \t width \t height \t deformation \n") # added deformation column to file header
+    file.write(f"frame \t x \t y \t width \t height \t deformation \n") 
 
 while cap.isOpened:
     ret, frame = cap.read()
@@ -70,53 +69,70 @@ while cap.isOpened:
         # For area debugging
         # print(f"Area: {area}")
 
-        if area > 1600:
-            cv2.drawContours(frame, contour, -1, (0, 0, 255), 3)
-            
-            # Calculate the minimum bounding rectangle of the contour
-            rect = cv2.minAreaRect(contour)
-            # Get corner points of rectangle
-            box = cv2.boxPoints(rect)
-            # convert the corner points to integers
-            box = np.int0(box)
-            # Draw the bounding rectangle on the frame
-            cv2.drawContours(frame, [box], 0, (210, 140, 17), 2)
-            # get dimensions of rectangle
-            width, height = rect[1]
-            L_maj, L_min = max(width, height), min(width, height)
-            print(f"L_maj: {L_maj} \t L_min: {L_min} \n")
-            
-            # Calculate the Taylor deformation parameter
+        # Filter out contours that are too small
+        if area < 1600:
+            continue
+        
+        # Circularity filtering
+        # Fit an ellipse to the contour
+        ellipse = cv2.fitEllipse(contour)
+        
+        # Calculate the area and perimeter of the ellipse
+        area = np.pi * ellipse[1][0] * ellipse[1][1] / 4
+        perimeter = np.pi * (3 * (ellipse[1][0] + ellipse[1][1]) - np.sqrt((3 * ellipse[1][0] + ellipse[1][1]) * (ellipse[1][0] + 3 * ellipse[1][1])))
+        # Calculate the circularity of the contour
+        circularity = 4 * np.pi * area / (perimeter * perimeter)
 
-            # L_maj = major axis length (width)
-            # L_min = minor axis length (height)
-            deformation = (L_maj - L_min)/(L_maj + L_min)
-            # output deformation parameter to a file, along with frame number and droplet position
-            with open(position_data_file, "a") as file:
-                frame_num = cap.get(cv2.CAP_PROP_POS_FRAMES)
-                # calculate moments of contour
-                M = cv2.moments(contour)
-                center_x = round(M["m10"] / M["m00"])
-                center_y = round(M["m01"] / M["m00"])
-                if center_y > 600:
-                    file.write(f"{frame_num} \t {center_x} \t {center_y} \t {width} \t {height} \t {deformation} \n")
-
-            if cv2.isContourConvex(contour):
-                print(f"Contour is convex")
-            # Calculate image moments of the detected contour
+        
+        cv2.drawContours(frame, contour, -1, (0, 0, 255), 3)
+        
+        # Taylor Deformation Parameter
+        # Calculate the minimum bounding rectangle of the contour
+        rect = cv2.minAreaRect(contour)
+        # Get corner points of rectangle
+        box = cv2.boxPoints(rect)
+        # convert the corner points to integers
+        box = np.int0(box)
+        # Draw the bounding rectangle on the frame
+        cv2.drawContours(frame, [box], 0, (210, 140, 17), 2)
+        # get dimensions of rectangle
+        width, height = rect[1]
+        L_maj, L_min = max(width, height), min(width, height)
+        
+        # Calculate the Taylor deformation parameter
+        # L_maj = major axis length (width)
+        # L_min = minor axis length (height)
+        deformation = (L_maj - L_min)/(L_maj + L_min)
+        # output deformation parameter to a file, along with frame number and droplet position
+        with open(position_data_file, "a") as file:
+            frame_num = cap.get(cv2.CAP_PROP_POS_FRAMES)
+            # calculate moments of contour
             M = cv2.moments(contour)
+            center_x = round(M["m10"] / M["m00"])
+            center_y = round(M["m01"] / M["m00"])
+            if center_y > 600:
+                file.write(f"{frame_num} \t {center_x} \t {center_y} \t {width} \t {height} \t {deformation} \n")
+            else:
+                print(f"circularity of non-droplet: {circularity}")
 
-            # Draw a circle based centered at centroid coordinates
-            cv2.circle(
-                frame,
-                (round(M["m10"] / M["m00"]), round(M["m01"] / M["m00"])),
-                5,
-                (0, 255, 0),
-                -1,
-            )
-            
-            if frame_num in [1, 131, 216]:
-                cv2.imwrite(f"frame_{frame_num}.png", frame)
+        if cv2.isContourConvex(contour):
+            print(f"Contour is convex")
+        # Calculate image moments of the detected contour
+        M = cv2.moments(contour)
+
+        # Draw a circle based centered at centroid coordinates
+        cv2.circle(
+            frame,
+            (round(M["m10"] / M["m00"]), round(M["m01"] / M["m00"])),
+            5,
+            (0, 255, 0),
+            -1,
+        )
+        
+        if frame_num in [131]:
+            cv2.imwrite(f"mask_{frame_num}.png", mask)
+            cv2.imwrite(f"original_{frame_num}.png", blurred_frame)
+            cv2.imwrite(f"frame_{frame_num}.png", frame)
 
     # write the contoured frame
     out.write(frame)
@@ -130,8 +146,8 @@ while cap.isOpened:
     cv2.imshow("Video, mask and contour", video_image)
     cv2.waitKey(1)
 
-    key = cv2.waitKey(100)
-    if key == 27:
+    # Break the loop if the user presses 'q'
+    if cv2.waitKey(1) & 0xFF == ord("q"):
         break
 
 cap.release()
