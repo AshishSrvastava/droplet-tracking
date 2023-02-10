@@ -22,9 +22,9 @@ for line in data:
 
 # calculate the velocities based on the position and time data
 velocities = []
-for i in range(1, len(positions)):
+for i in range(1, len(positions) - 5):
     # calculate the velocity for each time step by dividing the change in position by the change in time
-    vel = (positions[i] - positions[i-1]) / (times[i] - times[i-1])
+    vel = (positions[i + 5] - positions[i]) / (times[i + 5] - times[i])
     velocities.append(vel)
     
 # calculate the moving average of the velocities using a window size of 5
