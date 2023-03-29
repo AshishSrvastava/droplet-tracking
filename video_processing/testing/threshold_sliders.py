@@ -3,12 +3,12 @@ import numpy as np
 import sys
 
 def reset_to_defaults():
-    cv2.setTrackbarPos("Hue Min", "Reset to Defaults (Press R)", lower_bound[0])
-    cv2.setTrackbarPos("Hue Max", "Reset to Defaults (Press R)", upper_bound[0])
-    cv2.setTrackbarPos("Sat Min", "Reset to Defaults (Press R)", lower_bound[1])
-    cv2.setTrackbarPos("Sat Max", "Reset to Defaults (Press R)", upper_bound[1])
-    cv2.setTrackbarPos("Val Min", "Reset to Defaults (Press R)", lower_bound[2])
-    cv2.setTrackbarPos("Val Max", "Reset to Defaults (Press R)", upper_bound[2])
+    cv2.setTrackbarPos("Hue Min", "Control Panel (Press R to reset)", lower_bound[0])
+    cv2.setTrackbarPos("Hue Max", "Control Panel (Press R to reset)", upper_bound[0])
+    cv2.setTrackbarPos("Sat Min", "Control Panel (Press R to reset)", lower_bound[1])
+    cv2.setTrackbarPos("Sat Max", "Control Panel (Press R to reset)", upper_bound[1])
+    cv2.setTrackbarPos("Val Min", "Control Panel (Press R to reset)", lower_bound[2])
+    cv2.setTrackbarPos("Val Max", "Control Panel (Press R to reset)", upper_bound[2])
 
 # Check if a video file is provided as a command-line argument
 if len(sys.argv) < 2:
@@ -31,10 +31,16 @@ if not ret:
 
 cap.release()  # Close the video file
 
-print(image.shape)
+# print(image.shape) # for debugging
 
-cv2.namedWindow("Reset to Defaults (Press R)", cv2.WINDOW_NORMAL)
-cv2.resizeWindow("Reset to Defaults (Press R)", 640, 480)
+cv2.namedWindow("Main Window", cv2.WINDOW_NORMAL)
+cv2.namedWindow("Control Panel (Press R to reset)", cv2.WINDOW_NORMAL)
+
+cv2.resizeWindow("Main Window", 1280, 480)
+cv2.resizeWindow("Control Panel (Press R to reset)", 300, 200)
+
+cv2.moveWindow("Main Window", 0, 0)
+cv2.moveWindow("Control Panel (Press R to reset)", 1300, 0)
 
 hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
@@ -42,12 +48,12 @@ lower_bound = np.array([63, 0, 0])
 upper_bound = np.array([179, 255, 255])
 
 def on_trackbar(*args):
-    hue_min = cv2.getTrackbarPos("Hue Min", "Reset to Defaults (Press R)")
-    hue_max = cv2.getTrackbarPos("Hue Max", "Reset to Defaults (Press R)")
-    sat_min = cv2.getTrackbarPos("Sat Min", "Reset to Defaults (Press R)")
-    sat_max = cv2.getTrackbarPos("Sat Max", "Reset to Defaults (Press R)")
-    val_min = cv2.getTrackbarPos("Val Min", "Reset to Defaults (Press R)")
-    val_max = cv2.getTrackbarPos("Val Max", "Reset to Defaults (Press R)")
+    hue_min = cv2.getTrackbarPos("Hue Min", "Control Panel (Press R to reset)")
+    hue_max = cv2.getTrackbarPos("Hue Max", "Control Panel (Press R to reset)")
+    sat_min = cv2.getTrackbarPos("Sat Min", "Control Panel (Press R to reset)")
+    sat_max = cv2.getTrackbarPos("Sat Max", "Control Panel (Press R to reset)")
+    val_min = cv2.getTrackbarPos("Val Min", "Control Panel (Press R to reset)")
+    val_max = cv2.getTrackbarPos("Val Max", "Control Panel (Press R to reset)")
 
     print(f"hue: ({hue_min}, {hue_max}) | sat: ({sat_min}, {sat_max}) | val: ({val_min}, {val_max})")
 
@@ -60,21 +66,16 @@ def on_trackbar(*args):
     segmented_img = cv2.bitwise_and(image, image, mask=notMask)
 
     imgMASK_color = cv2.cvtColor(imgMASK, cv2.COLOR_GRAY2BGR)
-    combined = np.hstack((imgMASK_color, segmented_img))
-    cv2.imshow("Reset to Defaults (Press R)", combined)
+    grid = np.vstack((image, imgMASK_color, segmented_img))
 
-cv2.createTrackbar("Hue Min", "Reset to Defaults (Press R)", lower_bound[0], 179, on_trackbar)
-cv2.createTrackbar("Hue Max", "Reset to Defaults (Press R)", upper_bound[0], 179, on_trackbar)
-cv2.createTrackbar("Sat Min", "Reset to Defaults (Press R)", lower_bound[1], 255, on_trackbar)
-cv2.createTrackbar("Sat Max", "Reset to Defaults (Press R)", upper_bound[1], 255, on_trackbar)
-cv2.createTrackbar("Val Min", "Reset to Defaults (Press R)", lower_bound[2], 255, on_trackbar)
-cv2.createTrackbar("Val Max", "Reset to Defaults (Press R)", upper_bound[2], 255, on_trackbar)
+    cv2.imshow("Main Window", grid)
 
-# Create a "Reset to Defaults" button
-# reset_button = np.zeros((50, 640, 3), np.uint8)
-# cv2.putText(reset_button, "Reset to Defaults (Press R)", (10, 35), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-# cv2.namedWindow("Reset", cv2.WINDOW_NORMAL)
-# cv2.imshow("Reset", reset_button)
+cv2.createTrackbar("Hue Min", "Control Panel (Press R to reset)", lower_bound[0], 179, on_trackbar)
+cv2.createTrackbar("Hue Max", "Control Panel (Press R to reset)", upper_bound[0], 179, on_trackbar)
+cv2.createTrackbar("Sat Min", "Control Panel (Press R to reset)", lower_bound[1], 255, on_trackbar)
+cv2.createTrackbar("Sat Max", "Control Panel (Press R to reset)", upper_bound[1], 255, on_trackbar)
+cv2.createTrackbar("Val Min", "Control Panel (Press R to reset)", lower_bound[2], 255, on_trackbar)
+cv2.createTrackbar("Val Max", "Control Panel (Press R to reset)", upper_bound[2], 255, on_trackbar)
 
 on_trackbar(0)
 
@@ -86,3 +87,4 @@ while True:
         break
 
 cv2.destroyAllWindows()
+
