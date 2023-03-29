@@ -4,6 +4,7 @@ import numpy as np
 import math
 import re
 import time
+import os
 
 # Constants
 LOWER_BLUE = np.array([63, 0, 0])
@@ -164,8 +165,7 @@ def main():
         exit(0)
 
     input_vid = sys.argv[1]
-    base_name = input_vid.split("/")[-1].split(".")[0]
-    print(f"base_name: {base_name}")
+    base_name = os.path.splitext(os.path.basename(input_vid))[0]
 
     # Add the following line to remove any digits before "mL"
     base_name = re.sub(r'^\d*\.*\d*', '', base_name)
@@ -175,7 +175,7 @@ def main():
     angle_info = f"{'{:+.3f}'.format(correction_angle).replace('.', '_').replace('+', '')}_deg"
 
     print(f"angle_info: {angle_info}")
-    output_vid = f"rotated_videos/{base_name}{angle_info}.avi"
+    output_vid = os.path.join("rotated_videos", f"{base_name}{angle_info}.avi")
     print(f"Output video: {output_vid}")
 
     show_contour = True
@@ -189,4 +189,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
