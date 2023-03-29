@@ -167,15 +167,15 @@ def main():
     input_vid = sys.argv[1]
     base_name = os.path.splitext(os.path.basename(input_vid))[0]
 
-    # Add the following line to remove any digits before "mL"
-    base_name = re.sub(r'^\d*\.*\d*', '', base_name)
+    # Remove the following line to keep the digits before "mL"
+    # base_name = re.sub(r'^\d*\.*\d*', '', base_name)
 
     correction_angle = get_correction_angle(input_vid)
     print(f"correction_angle: {correction_angle} degrees")
     angle_info = f"{'{:+.3f}'.format(correction_angle).replace('.', '_').replace('+', '')}_deg"
 
     print(f"angle_info: {angle_info}")
-    output_vid = os.path.join("rotated_videos", f"{base_name}{angle_info}.avi")
+    output_vid = os.path.join("rotated_videos", f"{base_name}_{angle_info}.avi")
     print(f"Output video: {output_vid}")
 
     show_contour = True
