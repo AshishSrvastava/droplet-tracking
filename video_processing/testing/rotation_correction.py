@@ -1,11 +1,23 @@
 import sys
-import csv
 import cv2
 import numpy as np
 import math
 import re
+import time
 
-# Mouse event callback function
+# Constants
+LOWER_BLUE = np.array([63, 0, 0])
+UPPER_BLUE = np.array([179, 255, 255])
+MIN_CONTOUR_AREA = 1600
+
+# Helper functions
+def rotate_frame(frame, angle):
+    (h, w) = frame.shape[:2]
+    center = (w // 2, h // 2)
+    M = cv2.getRotationMatrix2D(center, angle, 1.0)
+    rotated = cv2.warpAffine(frame, M, (w, h))
+    return rotated
+
 def select_points(event, x, y, flags, param):
     global points, selecting, first_frame_display
 
@@ -20,7 +32,6 @@ def select_points(event, x, y, flags, param):
             if len(points) == 2:
                 selecting = False
 
-# Update first frame display with points and green dot under cursor
 def update_first_frame_display(x, y):
     global points, first_frame, first_frame_display
 
@@ -33,138 +44,138 @@ def update_first_frame_display(x, y):
     if selecting:
         cv2.circle(first_frame_display, (x, y), 5, (0, 255, 0), -1)
 
-# Input
-input_vid = sys.argv[1]
-cap = cv2.VideoCapture(input_vid)
-width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)  # 1920
-height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)  # 1080
+def get_correction_angle(input_vid):
+    cap = cv2.VideoCapture(input_vid)
+    if not cap.isOpened():
+        raise Exception(f"Error opening video file: {input_vid}")
 
-# Get first frame for error correction
-ret, first_frame = cap.read()
-first_frame_display = first_frame.copy()
+    width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+    height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
 
-# Check if angle is already in the input video filename
-angle_pattern = re.compile(r"[-+]?\d+_\d+(?=_angle)")  # Updated regular expression
-angle_match = angle_pattern.search(input_vid)
+    global first_frame, first_frame_display
+    ret, first_frame = cap.read()
+    first_frame_display = first_frame.copy()
 
-if angle_match:
-    angle_str = angle_match.group().replace("_", ".")
-    correction_angle = float(angle_str)
-    print(f"Correction angle from filename: {correction_angle} radians")
-else:
-    # Show first frame for user to select points
-    cv2.namedWindow("First Frame")
-    cv2.setMouseCallback("First Frame", select_points)
+    angle_pattern = re.compile(r"[-+]?\d+(_|\.)\d+_deg")
+    angle_match = angle_pattern.search(input_vid)
 
-    points = []
-    selecting = True
+    if angle_match:
+        angle_str = angle_match.group().replace("_", ".").replace("_deg", "")
+        correction_angle = float(angle_str)
+        print(f"Correction angle from filename: {correction_angle:.3e} degrees")
+    else:
+        cv2.namedWindow("First Frame")
+        cv2.setMouseCallback("First Frame", select_points)
 
-    while selecting:
-        cv2.imshow("First Frame", first_frame_display)
-        key = cv2.waitKey(1) & 0xFF
-        if key == 27 or key == ord("q"):
-            exit(0)
+        global points, selecting
+        points = []
+        selecting = True
 
+        while selecting:
+            cv2.imshow("First Frame", first_frame_display)
+            key = cv2.waitKey(1) & 0xFF
+            if key == ord('q'):
+                break
+
+        if len(points) != 2:
+            raise Exception("Two points must be selected")
+
+        cv2.destroyAllWindows()
+        dx, dy = points[1][0] - points[0][0], points[1][1] - points[0][1]
+        correction_angle = -1*math.degrees(math.atan2(dy, dx))
+        print(f"Correction angle from selected points: {correction_angle} radians")
+
+    cap.release()
+    return correction_angle
+
+def process_video(input_vid, correction_angle, output_vid, position_data_file, show_contour=False, show_centroid=False, show_rejected=False, show_bbox=False):
+    cap = cv2.VideoCapture(input_vid)
+    if not cap.isOpened():
+        raise Exception(f"Error opening video file: {input_vid}")
+
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    fps = int(cap.get(cv2.CAP_PROP_FPS))
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+
+    out = cv2.VideoWriter(output_vid, fourcc, fps, (width, height))
+
+    with open(position_data_file, "w") as pos_file:
+        pos_file.write("Frame, x, y\n")
+
+        frame_counter = 0
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if not ret:
+                break
+
+            frame_counter += 1
+            rotated_frame = rotate_frame(frame, correction_angle)
+
+            # Convert frame to grayscale and apply Gaussian blur
+            blurred_frame = cv2.GaussianBlur(rotated_frame, (5, 5), 0)
+
+            # Convert to HSV
+            hsv = cv2.cvtColor(blurred_frame, cv2.COLOR_BGR2HSV)
+
+            mask = cv2.inRange(hsv, LOWER_BLUE, UPPER_BLUE)
+            contours, hierarchy = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+            for contour in contours:
+                area = cv2.contourArea(contour)
+
+                if area > MIN_CONTOUR_AREA:
+                    if show_contour:
+                        cv2.drawContours(rotated_frame, [contour], -1, (0, 255, 0), 1)
+                    
+                    if show_centroid:
+                        M = cv2.moments(contour)
+                        center_x = round(M["m10"] / M["m00"])
+                        center_y = round(M["m01"] / M["m00"])
+                        cv2.circle(rotated_frame, (center_x, center_y), 5, (0, 255, 0), -1)
+
+                    if show_bbox:
+                        rect = cv2.minAreaRect(contour)
+                        box = cv2.boxPoints(rect)
+                        box = np.intp(box)
+                        cv2.drawContours(rotated_frame, [box], 0, (210, 140, 17), 2)
+
+                elif show_rejected:
+                    cv2.drawContours(rotated_frame, [contour], -1, (0, 0, 255), 1)
+
+            out.write(rotated_frame)
+
+            if frame_counter % 100 == 0:
+                print(f"Processed {frame_counter} frames")
+
+            cv2.imshow("Rotated Frame", rotated_frame)
+            key = cv2.waitKey(1) & 0xFF
+            if key == ord('q'):
+                break
+
+    cap.release()
+    out.release()
     cv2.destroyAllWindows()
 
-    # Fit a line to the two points and calculate the angle
-    x1, y1 = points[0]
-    x2, y2 = points[1]
-    angle = math.atan2(y2 - y1, x2 - x1)
-    angle = round(angle, 2)
-    correction_angle = -angle
-    print(f"Correction angle: {correction_angle} radians")
+def main():
+    if len(sys.argv) != 2:
+        print("Usage: python rotation_correction.py <input_video>")
+        exit(0)
 
-# Helper function to rotate a frame
-def rotate_frame(frame, angle):
-    (h, w) = frame.shape[:2]
-    center = (w // 2, h // 2)
-    M = cv2.getRotationMatrix2D(center, angle, 1.0)
-    rotated = cv2.warpAffine(frame, M, (w, h))
-    return rotated
+    input_vid = sys.argv[1]
+    base_name = input_vid.split("/")[-1].split(".")[0]
+    correction_angle = get_correction_angle(input_vid)
+    angle_info = f"_{'{:.3e}'.format(correction_angle).replace('.', '_').replace('+', '').replace('-', '_')}_rad"
+    output_vid = f"./rotated_videos/out_{base_name}{angle_info}.avi"
+    print(f"Output video: {output_vid}")
+    position_data_file = "position_data.txt"
 
-# Modify output filenames to include the correction angle
-angle_str = f"{correction_angle:.2f}".replace(".", "_")
-output_vid = f"output_{angle_str}_angle.avi"
-position_data_file = f"droplet_posn_time_{angle_str}_angle.txt"
-
-# Save the correction angle in a separate text file
-with open("correction_angles.txt", "a") as file:
-    file.write(f"{input_vid}\t{correction_angle}\n")
-
-# Output video
-fourcc = cv2.VideoWriter_fourcc("D", "I", "V", "X")
-out = cv2.VideoWriter(output_vid, fourcc, 20.0, (1920, 1080))
-
-# Output data for graphing
-with open(position_data_file, "w") as file:
-    file.write("frame \t x \t y \t width \t height \t deformation \n")
-
-# Process the video
-while cap.isOpened():
-    ret, frame = cap.read()
-    if not ret:
-        print("Can't receive frame (stream end?). Exiting ...")
-        break
-
-    # Rotate frame using the correction angle
-    frame = rotate_frame(frame, correction_angle)
-
-    # Get current frame number
-    frame_num = int(cap.get(cv2.CAP_PROP_POS_FRAMES))
-    # Convert frame number to string and add leading zeros
-    # Put frame number in top left corner of frame
-    cv2.rectangle(frame, (0, 0), (100, 30), (0, 0, 0), -1)
-    cv2.putText(frame, str(frame_num), (25, 25), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+    show_contour = True
+    show_centroid = True
+    show_rejected = True
+    show_bbox = True
     
-    # Put correction angle in the top right corner of frame
-    angle_text = f"Angle: {correction_angle:.2f} rad"
-    cv2.rectangle(frame, (int(width) - 240, 0), (int(width), 30), (0, 0, 0), -1)
-    cv2.putText(frame, angle_text, (int(width) - 230, 25), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+    process_video(input_vid, correction_angle, output_vid, position_data_file, show_contour, show_centroid, show_rejected, show_bbox)
 
-
-    # Convert to grayscale and apply Gaussian blur
-    blurred_frame = cv2.GaussianBlur(frame, (5, 5), 0)
-
-    # Convert to HSV
-    hsv = cv2.cvtColor(blurred_frame, cv2.COLOR_BGR2HSV)
-
-    # Define range of color in HSV
-    lower_blue = np.array([63, 0, 0])
-    upper_blue = np.array([179, 255, 255])
-
-    mask = cv2.inRange(hsv, lower_blue, upper_blue)
-
-    # Find contours 
-    contours, hierarchy = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    # all contours
-    cv2.drawContours(frame, contours, -1, (0, 255, 0), 1)
-
-    # contour filtering
-    for contour in contours:
-        area = cv2.contourArea(contour)
-
-        # Filter out contours that are too small
-        if area < 1600:
-            continue
-
-        # ... (continue with the rest of the original code) ...
-
-    # write the contoured frame
-    out.write(frame)
-
-    # concatenate all frames into a single image for display
-    # convert the 2d contour image to 3d image by copying same image to 3rd channel
-    mask_3ch = cv2.merge((mask, mask, mask))
-    video_image = np.concatenate((blurred_frame, mask_3ch, frame), axis=0)
-    # show the image
-    cv2.imshow("Video, mask and contour", video_image)
-    cv2.waitKey(1)
-
-    # Break the loop if the user presses 'q'
-    if cv2.waitKey(1) & 0xFF == ord("q"):
-        break
-
-cap.release()
-cv2.destroyAllWindows()
+if __name__ == "__main__":
+    main()

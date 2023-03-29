@@ -23,3 +23,6 @@
 0.02mL_15mlmin_-0_34_angle.avi	-0.34
 0.02mL_15mlmin_-0_34_angle.avi	-0.34
 0.02mL_15mlmin.avi	-0.01
+old_videos/0.02mL_15mlmin.avi	-0.0
+old_videos/0.02mL_15mlmin_-0_34_angle.avi	-0.34
+old_videos/0.02mL_15mlmin_-0_34_angle.avi	-0.34
