@@ -68,13 +68,7 @@ def on_trackbar(*args):
     imgMASK_color = cv2.cvtColor(imgMASK, cv2.COLOR_GRAY2BGR)
     grid = np.vstack((image, imgMASK_color, segmented_img))
 
-    # Create an empty black image with the same height as the grid and the desired width for the sliders
-    slider_space = np.zeros((grid.shape[0], 300, 3), dtype=np.uint8)
-
-    # Concatenate the empty black image with the grid
-    grid_with_sliders = np.hstack((grid, slider_space))
-
-    cv2.imshow("Main Window", grid_with_sliders)
+    cv2.imshow("Main Window", grid)
 
 
 cv2.createTrackbar("Hue Min", "Control Panel", lower_bound[0], 179, on_trackbar)
