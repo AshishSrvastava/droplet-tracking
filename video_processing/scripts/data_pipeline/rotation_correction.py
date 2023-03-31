@@ -4,6 +4,13 @@ import cv2
 import numpy as np
 import math
 import re
+import os
+
+# Create folders if they do not exist
+if not os.path.exists("rotated_videos"):
+    os.makedirs("rotated_videos")
+if not os.path.exists("position_data"):
+    os.makedirs("position_data")
 
 # Mouse event callback function
 def select_points(event, x, y, flags, param):
@@ -44,14 +51,12 @@ base_name_pattern = re.compile(r"^(.+?)_(\d{8}_\d{3}\.avi)$")
 match = base_name_pattern.search(input_vid)
 if match:
     base_name = match.group(1)
-    # identifier_suffix = match.group(0)[len(base_name):]
     identifier_suffix = match.group(2)
     print(f"base name: {base_name}")
     print(f"Suffix: {identifier_suffix}")
 else:
     print("Invalid input video filename")
     sys.exit()
-    
 
 # Get first frame for error correction
 ret, first_frame = cap.read()
@@ -105,7 +110,7 @@ output_vid = f"rotated_videos/{base_name}_{angle_str}_{identifier_suffix}"
 print(f"Output video: {output_vid}")
 
 
-position_data_file = f"droplet_posn_time_{angle_str}_angle.txt"
+position_data_file = f"position_data/droplet_posn_time_{angle_str}_angle.txt"
 
 # Save the correction angle in a separate text file
 with open("correction_angles.txt", "a") as file:
