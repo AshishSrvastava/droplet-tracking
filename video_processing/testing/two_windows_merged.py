@@ -116,34 +116,6 @@ cv2.setMouseCallback("Control Panel", on_mouse)
 def on_check_button(*args):
     update_main_window()
 
-# def select_points(event, x, y, flags, param):
-#     global points, selecting, first_frame_display
-
-#     if event == cv2.EVENT_MOUSEMOVE:
-#         update_first_frame_display(x, y)
-
-#     if event == cv2.EVENT_LBUTTONDOWN:
-#         if len(points) < 2:
-#             points.append((x, y))
-#             print(f"Point {len(points)}: ({x}, {y})")
-#             update_first_frame_display(x, y)
-#             if len(points) == 2:
-#                 selecting = False
-
-# def update_main_window_with_points(x, y):
-#     global points
-
-#     display_img = image.copy()
-
-#     for i, point in enumerate(points):
-#         cv2.circle(display_img, point, 5, (0, 0, 255), -1)
-#         cv2.putText(display_img, f"Point {i + 1}", (point[0] + 5, point[1] + 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
-
-#     if selecting:
-#         cv2.circle(display_img, (x, y), 5, (0, 255, 0), -1)
-
-#     update_main_window(display_img)
-
 def update_main_window_with_points(x, y):
     global points, selecting
 
@@ -158,28 +130,6 @@ def update_main_window_with_points(x, y):
 
     update_main_window(display_img)
 
-
-# def select_points(event, x, y, flags, param):
-#     global points, selecting, first_frame_display
-
-#     if event == cv2.EVENT_MOUSEMOVE:
-#         # update_first_frame_display(x, y)
-#         update_main_window_with_points(x, y)
-
-#     if event == cv2.EVENT_LBUTTONDOWN:
-#         if selecting:
-#             if len(points) < 2:
-#                 points.append((x, y))
-#                 print(f"Point {len(points)}: ({x}, {y})")
-#                 update_first_frame_display(x, y)
-#                 if len(points) == 2:
-#                     # Calculate the angle
-#                     x1, y1 = points[0]
-#                     x2, y2 = points[1]
-#                     angle = math.atan2(y2 - y1, x2 - x1)
-#                     angle = round(angle, 2)
-#                     correction_angle = -angle
-#                     print(f"Correction angle: {correction_angle} radians")
 
 def select_points(event, x, y, flags, param):
     global points, selecting, first_frame_display
@@ -198,20 +148,6 @@ def select_points(event, x, y, flags, param):
                     selecting = False
 
 
-
-# Update first frame display with points and green dot under cursor
-# def update_first_frame_display(x, y):
-#     global points, first_frame, first_frame_display
-
-#     first_frame_display = first_frame.copy()
-
-#     for i, point in enumerate(points):
-#         cv2.circle(first_frame_display, point, 5, (0, 0, 255), -1)
-#         cv2.putText(first_frame_display, f"Point {i + 1}", (point[0] + 5, point[1] + 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
-
-#     if selecting:
-#         cv2.circle(first_frame_display, (x, y), 5, (0, 255, 0), -1)
-
     
 
 # Create a new function called rotate_frame to perform the frame rotation
@@ -222,31 +158,6 @@ def rotate_frame(img, angle):
     rotated = cv2.warpAffine(img, M, (w, h))
     return rotated
 
-# # Modify the on_angle_correction_button callback to include the angle correction steps
-# def on_angle_correction_button(*args):
-#     global image, selecting, first_frame_display, points
-#     selecting = True
-
-#     while selecting:
-#         cv2.imshow("Select Points", first_frame_display)
-#         key = cv2.waitKey(1) & 0xFF
-#         if key == 27 or key == ord("q"):
-#             exit(0)
-
-#     # Calculate the angle
-#     x1, y1 = points[0]
-#     x2, y2 = points[1]
-#     angle = math.atan2(y2 - y1, x2 - x1)
-#     angle = round(angle, 2)
-#     correction_angle = -angle
-#     print(f"Correction angle: {correction_angle} radians")
-
-#     # Apply the rotation to the image
-#     image = rotate_frame(image, correction_angle)
-#     update_main_window()
-
-#     # Reset the points
-#     points = []
 
 def on_angle_correction_button(*args):
     global selecting
@@ -262,44 +173,12 @@ first_frame_display = image.copy()
 
 
 
-
-# def on_angle_correction_button(*args):
-#     print(f"Angle Correction Button Clicked: {check_buttons[3].checked}")
-#     check_buttons[3].checked = False  # Reset checked to False after printing the message
-
-
 check_buttons = [
     CheckButton("Show Image", 10, 10, on_check_button, checked=True),
     CheckButton("Show Mask", 10, 40, on_check_button, checked=True),
     CheckButton("Show Segmented", 10, 70, on_check_button, checked=True),
     PressButton("Angle Correction", 10, 110, on_angle_correction_button, checked=False),
 ]
-
-# def update_main_window():
-#     display_list = []
-
-#     if check_buttons[0].checked:
-#         display_list.append(image)
-#     if check_buttons[1].checked:
-#         display_list.append(imgMASK_color)
-#     if check_buttons[2].checked:
-#         display_list.append(segmented_img)
-
-#     if display_list:
-#         fixed_width = 1800
-#         aspect_ratio = float(image.shape[1]) / float(image.shape[0])
-#         grid_height = int(fixed_width / aspect_ratio)
-#         grid_width = fixed_width
-#         grid = np.vstack(display_list)
-#     else:
-#         grid_height = 1
-#         grid_width = 1
-#         grid = np.zeros((grid_height, grid_width, 3), dtype=np.uint8)
-
-#     print("Grid Size: %d x %d", grid.shape[0], grid.shape[1])
-
-#     cv2.resizeWindow("Main Window", grid_width, grid.shape[1])
-#     cv2.imshow("Main Window", grid)
 
 # Update first frame display with points and green dot under cursor
 def update_main_window(x=None, y=None):
