@@ -160,9 +160,11 @@ def rotate_frame(img, angle):
 
 
 def on_angle_correction_button(*args):
-    global selecting
+    global selecting, points
     selecting = True
+    points = []
     print("On Angle Correction Button clicked. Select two points on the image.")
+
 
 # Set the mouse callback for the "Select Points" window
 cv2.setMouseCallback("Main Window", select_points)
