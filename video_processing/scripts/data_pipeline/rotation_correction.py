@@ -39,9 +39,19 @@ cap = cv2.VideoCapture(input_vid)
 width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)  # 1920
 height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)  # 1080
 
-# Base name and suffix of file
-base_name = input_vid.split("/")[-1].split(".")[0]
-input_vid_suffix = input_vid.rsplit('_', 1)[-1]
+# Video name handling
+base_name_pattern = re.compile(r"^(.+?)_(\d{8}_\d{3}\.avi)$")
+match = base_name_pattern.search(input_vid)
+if match:
+    base_name = match.group(1)
+    # identifier_suffix = match.group(0)[len(base_name):]
+    identifier_suffix = match.group(2)
+    print(f"base name: {base_name}")
+    print(f"Suffix: {identifier_suffix}")
+else:
+    print("Invalid input video filename")
+    sys.exit()
+    
 
 # Get first frame for error correction
 ret, first_frame = cap.read()
@@ -91,7 +101,7 @@ def rotate_frame(frame, angle):
 angle_str = f"{correction_angle:.2f}".replace(".", "_") + "deg"
 print(f"Angle string: {angle_str}")
 print(f"Base name: {base_name} \n angle_str: {angle_str}")
-output_vid = f"rotated_videos/{base_name}_{angle_str}_{input_vid_suffix}"
+output_vid = f"rotated_videos/{base_name}_{angle_str}_{identifier_suffix}"
 print(f"Output video: {output_vid}")
 
 
@@ -164,7 +174,8 @@ while cap.isOpened():
     # concatenate all frames into a single image for display
     # convert the 2d contour image to 3d image by copying same image to 3rd channel
     mask_3ch = cv2.merge((mask, mask, mask))
-    video_image = np.concatenate((blurred_frame, mask_3ch, frame), axis=0)
+    # video_image = np.concatenate((blurred_frame, mask_3ch, frame), axis=0)
+    video_image = frame
     # show the image
     cv2.imshow("Video, mask and contour", video_image)
     cv2.waitKey(1)
