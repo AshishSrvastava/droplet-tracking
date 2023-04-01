@@ -86,7 +86,7 @@ else:
 
     cv2.destroyAllWindows()
 
-    # Fit a line to the two points and calculate the angle
+        # Fit a line to the two points and calculate the angle
     x1, y1 = points[0]
     x2, y2 = points[1]
     angle = math.degrees(math.atan2(y2 - y1, x2 - x1))
@@ -109,20 +109,9 @@ print(f"Base name: {base_name} \n angle_str: {angle_str}")
 output_vid = f"rotated_videos/{base_name}_{angle_str}_{identifier_suffix}"
 print(f"Output video: {output_vid}")
 
-
-position_data_file = f"position_data/droplet_posn_time_{angle_str}_angle.txt"
-
-# Save the correction angle in a separate text file
-with open("correction_angles.txt", "a") as file:
-    file.write(f"{input_vid}\t{correction_angle}\n")
-
 # Output video
 fourcc = cv2.VideoWriter_fourcc("D", "I", "V", "X")
 out = cv2.VideoWriter(output_vid, fourcc, 20.0, (1920, 1080))
-
-# Output data for graphing
-with open(position_data_file, "w") as file:
-    file.write("frame \t x \t y \t width \t height \t deformation \n")
 
 # Process the video
 while cap.isOpened():
@@ -134,55 +123,23 @@ while cap.isOpened():
     # Rotate frame using the correction angle
     frame = rotate_frame(frame, correction_angle)
 
-    # Get current frame number
-    frame_num = int(cap.get(cv2.CAP_PROP_POS_FRAMES))
-    # Convert frame number to string and add leading zeros
-    # Put frame number in top left corner of frame
-    cv2.rectangle(frame, (0, 0), (100, 30), (0, 0, 0), -1)
-    cv2.putText(frame, str(frame_num), (25, 25), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+    # Text handling is covered by video_graphing.py
+    # # Get current frame number
+    # frame_num = int(cap.get(cv2.CAP_PROP_POS_FRAMES))
+    # # Put frame number in top left corner of frame
+    # cv2.rectangle(frame, (0, 0), (100, 30), (0, 0, 0), -1)
+    # cv2.putText(frame, str(frame_num), (25, 25), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
     
-    # Put correction angle in the top right corner of frame
-    angle_text = f"Angle: {correction_angle:.2f} deg"
-    cv2.rectangle(frame, (int(width) - 240, 0), (int(width), 30), (0, 0, 0), -1)
-    cv2.putText(frame, angle_text, (int(width) - 230, 25), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+    # # Put correction angle in the top right corner of frame
+    # angle_text = f"Angle: {correction_angle:.2f} deg"
+    # cv2.rectangle(frame, (int(width) - 300, 0), (int(width), 30), (0, 0, 0), -1)
+    # cv2.putText(frame, angle_text, (int(width) - 285, 25), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
 
-
-    # Convert to grayscale and apply Gaussian blur
-    blurred_frame = cv2.GaussianBlur(frame, (5, 5), 0)
-
-    # Convert to HSV
-    hsv = cv2.cvtColor(blurred_frame, cv2.COLOR_BGR2HSV)
-
-    # Define range of color in HSV
-    lower_blue = np.array([63, 0, 0])
-    upper_blue = np.array([179, 255, 255])
-
-    mask = cv2.inRange(hsv, lower_blue, upper_blue)
-
-    # Find contours 
-    contours, hierarchy = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    # all contours
-    cv2.drawContours(frame, contours, -1, (0, 255, 0), 1)
-
-    # contour filtering
-    for contour in contours:
-        area = cv2.contourArea(contour)
-
-        # Filter out contours that are too small
-        if area < 1600:
-            continue
-
-    # write the contoured frame
+    # write the rotated frame
     out.write(frame)
 
-    # concatenate all frames into a single image for display
-    # convert the 2d contour image to 3d image by copying same image to 3rd channel
-    mask_3ch = cv2.merge((mask, mask, mask))
-    # video_image = np.concatenate((blurred_frame, mask_3ch, frame), axis=0)
-    video_image = frame
     # show the image
-    cv2.imshow("Video, mask and contour", video_image)
+    cv2.imshow("Rotated Video", frame)
     cv2.waitKey(1)
 
     # Break the loop if the user presses 'q'
