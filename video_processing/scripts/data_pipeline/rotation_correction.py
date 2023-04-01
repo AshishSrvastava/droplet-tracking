@@ -5,30 +5,33 @@ import numpy as np
 import math
 import re
 import os
+import argparse
 
-# Create folders if they do not exist
-if not os.path.exists("rotated_videos"):
-    os.makedirs("rotated_videos")
-if not os.path.exists("position_data"):
-    os.makedirs("position_data")
+
+# Define global variables
+points = []
+selecting = True
+first_frame = None
+first_frame_display = None
 
 # Mouse event callback function
 def select_points(event, x, y, flags, param):
-    global points, selecting, first_frame_display
+    global points, selecting, first_frame_display, first_frame
 
     if event == cv2.EVENT_MOUSEMOVE:
-        update_first_frame_display(x, y)
+        update_first_frame_display(x, y, param)  # Add the missing parameter
+
 
     if event == cv2.EVENT_LBUTTONDOWN:
         if len(points) < 2:
             points.append((x, y))
             print(f"Point {len(points)}: ({x}, {y})")
-            update_first_frame_display(x, y)
+            update_first_frame_display(x, y, param)  # Add the missing parameter
             if len(points) == 2:
                 selecting = False
 
 # Update first frame display with points and green dot under cursor
-def update_first_frame_display(x, y):
+def update_first_frame_display(x, y, param):
     global points, first_frame, first_frame_display
 
     first_frame_display = first_frame.copy()
@@ -40,59 +43,16 @@ def update_first_frame_display(x, y):
     if selecting:
         cv2.circle(first_frame_display, (x, y), 5, (0, 255, 0), -1)
 
-# Input
-input_vid = sys.argv[1]
-cap = cv2.VideoCapture(input_vid)
-width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)  # 1920
-height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)  # 1080
+# Function to write metadata to CSV file
+def write_metadata_to_csv(file_name, id, name, angle):
+    if not os.path.exists(file_name):
+        with open(file_name, "w") as f:
+            writer = csv.writer(f, delimiter="|")
+            writer.writerow(["ID", "Name", "Angle (deg)", "H_L", "H_U", "S_L", "S_U", "V_L", "V_U"])
 
-# Video name handling
-base_name_pattern = re.compile(r"^(.+?)_(\d{8}_\d{3}\.avi)$")
-match = base_name_pattern.search(input_vid)
-if match:
-    base_name = match.group(1)
-    identifier_suffix = match.group(2)
-    print(f"base name: {base_name}")
-    print(f"Suffix: {identifier_suffix}")
-else:
-    print("Invalid input video filename")
-    sys.exit()
-
-# Get first frame for error correction
-ret, first_frame = cap.read()
-first_frame_display = first_frame.copy()
-
-# Check if angle is already in the input video filename
-angle_pattern = re.compile(r"[-+]?\d+_\d+(?=_angle)")  # Updated regular expression
-angle_match = angle_pattern.search(input_vid)
-
-if angle_match:
-    angle_str = angle_match.group().replace("_", ".")
-    correction_angle = float(angle_str)
-    print(f"Correction angle from filename: {correction_angle} radians")
-else:
-    # Show first frame for user to select points
-    cv2.namedWindow("First Frame")
-    cv2.setMouseCallback("First Frame", select_points)
-
-    points = []
-    selecting = True
-
-    while selecting:
-        cv2.imshow("First Frame", first_frame_display)
-        key = cv2.waitKey(1) & 0xFF
-        if key == 27 or key == ord("q"):
-            exit(0)
-
-    cv2.destroyAllWindows()
-
-        # Fit a line to the two points and calculate the angle
-    x1, y1 = points[0]
-    x2, y2 = points[1]
-    angle = math.degrees(math.atan2(y2 - y1, x2 - x1))
-    angle = round(angle, 2)
-    correction_angle = -angle
-    print(f"Correction angle: {correction_angle} degrees")
+    with open(file_name, "a") as f:
+        writer = csv.writer(f, delimiter="|")
+        writer.writerow([id, name, angle, "", "", "", "", "", ""])
 
 # Helper function to rotate a frame
 def rotate_frame(frame, angle):
@@ -102,38 +62,114 @@ def rotate_frame(frame, angle):
     rotated = cv2.warpAffine(frame, M, (w, h))
     return rotated
 
-# Modify output filenames to include the correction angle
-angle_str = f"{correction_angle:.2f}".replace(".", "_") + "deg"
-print(f"Angle string: {angle_str}")
-print(f"Base name: {base_name} \n angle_str: {angle_str}")
-output_vid = f"rotated_videos/{base_name}_{angle_str}_{identifier_suffix}"
-print(f"Output video: {output_vid}")
+def main(args):
+    global first_frame, first_frame_display
+    # Create folders if they do not exist
+    if not os.path.exists("rotated_videos"):
+        os.makedirs("rotated_videos")
+    if not os.path.exists("position_data"):
+        os.makedirs("position_data")
 
-# Output video
-fourcc = cv2.VideoWriter_fourcc("D", "I", "V", "X")
-out = cv2.VideoWriter(output_vid, fourcc, 20.0, (1920, 1080))
+    # Input
+    # input_vid = sys.argv[1]
+    input_vid = args.input_vid
+    cap = cv2.VideoCapture(input_vid)
+    width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)  # 1920
+    height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)  # 1080
 
-# Process the video
-while cap.isOpened():
-    ret, frame = cap.read()
-    if not ret:
-        print("Can't receive frame (stream end?). Exiting ...")
-        break
+    # Video name handling
+    base_name_pattern = re.compile(r"^(.+?)_(\d{8}_\d{3}\.avi)$")
+    match = base_name_pattern.search(input_vid)
+    if match:
+        base_name = match.group(1)
+        identifier_suffix = match.group(2)
+        print(f"base name: {base_name}")
+        print(f"Suffix: {identifier_suffix}")
+    else:
+        print("Invalid input video filename")
+        sys.exit()
 
-    # Rotate frame using the correction angle
-    frame = rotate_frame(frame, correction_angle)
+    # Get first frame for error correction
+    ret, first_frame = cap.read()
+    first_frame_display = first_frame.copy()
 
+    # Check if angle is already in the input video filename
+    angle_pattern = re.compile(r"[-+]?\d+_\d+(?=_angle)")  # Updated regular expression
+    angle_match = angle_pattern.search(input_vid)
 
-    # write the rotated frame
-    out.write(frame)
+    if angle_match:
+        angle_str = angle_match.group().replace("_", ".")
+        correction_angle = float(angle_str)
+        print(f"Correction angle from filename: {correction_angle} radians")
+    else:
+        # Show first frame for user to select points
+        cv2.namedWindow("First Frame")
+        cv2.setMouseCallback("First Frame", select_points)
 
-    # show the image
-    cv2.imshow("Rotated Video", frame)
-    cv2.waitKey(1)
+        points = []
+        print(f"Points: {points}")
+        selecting = True
 
-    # Break the loop if the user presses 'q'
-    if cv2.waitKey(1) & 0xFF == ord("q"):
-        break
+        while selecting:
+            cv2.imshow("First Frame", first_frame_display)
+            key = cv2.waitKey(1) & 0xFF
+            if key == 27 or key == ord("q"):
+                exit(0)
 
-cap.release()
-cv2.destroyAllWindows()
+        cv2.destroyAllWindows()
+
+            # Fit a line to the two points and calculate the angle
+        x1, y1 = points[0]
+        x2, y2 = points[1]
+        angle = math.degrees(math.atan2(y2 - y1, x2 - x1))
+        angle = round(angle, 2)
+        correction_angle = -angle
+        print(f"Correction angle: {correction_angle} degrees")
+
+    # Modify output filenames to include the correction angle
+    angle_str = f"{correction_angle:.2f}".replace(".", "_") + "deg"
+    print(f"Angle string: {angle_str}")
+    print(f"Base name: {base_name} \n angle_str: {angle_str}")
+    output_vid = f"rotated_videos/{base_name}_{angle_str}_{identifier_suffix}"
+    print(f"Output video: {output_vid}")
+
+    # Write metadata to CSV
+    video_id = identifier_suffix.split("_")[0]
+    write_metadata_to_csv("video_metadata.csv", video_id, f"{base_name}_{identifier_suffix}", correction_angle)
+
+    # Output video
+    fourcc = cv2.VideoWriter_fourcc("D", "I", "V", "X")
+    out = cv2.VideoWriter(output_vid, fourcc, 20.0, (1920, 1080))
+
+    # Process the video
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            print("Can't receive frame (stream end?). Exiting ...")
+            break
+
+        # Rotate frame using the correction angle
+        frame = rotate_frame(frame, correction_angle)
+
+        # write the rotated frame
+        out.write(frame)
+
+        # show the image
+        if args.display:
+            cv2.imshow("Rotated Video", frame)
+            cv2.waitKey(1)
+            # Break the loop if the user presses 'q'
+            if cv2.waitKey(1) & 0xFF == ord("q"):
+                break
+
+    cap.release()
+    cv2.destroyAllWindows()
+
+if __name__ == "__main__":
+    
+# Argument parsing
+    parser = argparse.ArgumentParser(description="Video rotation correction")
+    parser.add_argument("input_vid", help="Input video file.")
+    parser.add_argument("--display", action="store_true", help="Display the rotated video.")
+    args = parser.parse_args()
+    main(args)
