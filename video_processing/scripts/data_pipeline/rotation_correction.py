@@ -123,17 +123,6 @@ while cap.isOpened():
     # Rotate frame using the correction angle
     frame = rotate_frame(frame, correction_angle)
 
-    # Text handling is covered by video_graphing.py
-    # # Get current frame number
-    # frame_num = int(cap.get(cv2.CAP_PROP_POS_FRAMES))
-    # # Put frame number in top left corner of frame
-    # cv2.rectangle(frame, (0, 0), (100, 30), (0, 0, 0), -1)
-    # cv2.putText(frame, str(frame_num), (25, 25), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-    
-    # # Put correction angle in the top right corner of frame
-    # angle_text = f"Angle: {correction_angle:.2f} deg"
-    # cv2.rectangle(frame, (int(width) - 300, 0), (int(width), 30), (0, 0, 0), -1)
-    # cv2.putText(frame, angle_text, (int(width) - 285, 25), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
 
     # write the rotated frame
     out.write(frame)
