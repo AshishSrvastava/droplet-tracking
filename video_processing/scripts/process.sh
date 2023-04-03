@@ -14,18 +14,3 @@ if [ $? -ne 0 ]; then
     echo "Error: video_correction.py failed"
     exit 1
 fi
-
-# Run video_graphing.py with rotated video file
-echo "Base name: $(basename "$input_file" .avi)"
-rotated_file="rotated_videos/$(basename "$input_file" .avi)_rotated.avi"
-python droplet_tracking.py "$rotated_file"
-
-# Check if droplet_tracking.py was successful
-if [ $? -ne 0 ]; then
-    echo "Error: droplet_tracking.py failed"
-    exit 1
-fi
-
-echo "Processing complete"
-
-
