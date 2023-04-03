@@ -1,6 +1,9 @@
 import cv2
 import numpy as np
 import sys
+import os
+import csv
+import argparse
 
 def reset_to_defaults():
     cv2.setTrackbarPos("Hue Min", "Reset to Defaults (Press R)", lower_bound[0])
@@ -10,26 +13,29 @@ def reset_to_defaults():
     cv2.setTrackbarPos("Val Min", "Reset to Defaults (Press R)", lower_bound[2])
     cv2.setTrackbarPos("Val Max", "Reset to Defaults (Press R)", upper_bound[2])
 
-# Check if a video file is provided as a command-line argument
 if len(sys.argv) < 2:
     print("Usage: python threshold_sliders.py <video_path>")
     sys.exit(1)
 
+parser = argparse.ArgumentParser(description="Threshold Sliders for Color Segmentation")
+parser.add_argument("video_path", help="Path to the video file")
+args = parser.parse_args()
+
+# Extract video ID from the video_path
 video_path = sys.argv[1]
 cap = cv2.VideoCapture(video_path)
+video_id = os.path.splitext(os.path.basename(video_path))[0].split('_')[-1]
 
-# Check if the video is opened successfully
 if not cap.isOpened():
     print(f"Error: Could not open video file {video_path}")
     sys.exit(1)
 
-# Read the first frame of the video
 ret, image = cap.read()
 if not ret:
     print(f"Error: Could not read the first frame of the video {video_path}")
     sys.exit(1)
 
-cap.release()  # Close the video file
+cap.release()
 
 print(image.shape)
 
@@ -49,7 +55,7 @@ def on_trackbar(*args):
     val_min = cv2.getTrackbarPos("Val Min", "Reset to Defaults (Press R)")
     val_max = cv2.getTrackbarPos("Val Max", "Reset to Defaults (Press R)")
 
-    print(f"hue: ({hue_min}, {hue_max}) | sat: ({sat_min}, {sat_max}) | val: ({val_min}, {val_max})")
+    # print(f"hue: ({hue_min}, {hue_max}) | sat: ({sat_min}, {sat_max}) | val: ({val_min}, {val_max})") # CLI
 
     lower = np.array([hue_min, sat_min, val_min])
     upper = np.array([hue_max, sat_max, val_max])
@@ -70,18 +76,36 @@ cv2.createTrackbar("Sat Max", "Reset to Defaults (Press R)", upper_bound[1], 255
 cv2.createTrackbar("Val Min", "Reset to Defaults (Press R)", lower_bound[2], 255, on_trackbar)
 cv2.createTrackbar("Val Max", "Reset to Defaults (Press R)", upper_bound[2], 255, on_trackbar)
 
-# Create a "Reset to Defaults" button
-# reset_button = np.zeros((50, 640, 3), np.uint8)
-# cv2.putText(reset_button, "Reset to Defaults (Press R)", (10, 35), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-# cv2.namedWindow("Reset", cv2.WINDOW_NORMAL)
-# cv2.imshow("Reset", reset_button)
-
 on_trackbar(0)
 
 while True:
     key = cv2.waitKey(0)
     if key == ord('r'):
         reset_to_defaults()
+    elif key == 13:  # Enter or Return key
+        hue_min = cv2.getTrackbarPos("Hue Min", "Reset to Defaults (Press R)")
+        hue_max = cv2.getTrackbarPos("Hue Max", "Reset to Defaults (Press R)")
+        sat_min = cv2.getTrackbarPos("Sat Min", "Reset to Defaults (Press R)")
+        sat_max = cv2.getTrackbarPos("Sat Max", "Reset to Defaults (Press R)")
+        val_min = cv2.getTrackbarPos("Val Min", "Reset to Defaults (Press R)")
+        val_max = cv2.getTrackbarPos("Val Max", "Reset to Defaults (Press R)")
+
+        print("\033[32m")  # Set the text color to green
+        print(f"Selected values: hue: ({hue_min}, {hue_max}) | sat: ({sat_min}, {sat_max}) | val: ({val_min}, {val_max})")
+        print("\033[0m")  # Reset the text color
+        
+        # Check if the video_metadata.csv file exists
+        if not os.path.exists("video_metadata.csv"):
+            with open("video_metadata.csv", "w", newline="") as csvfile:
+                csv_writer = csv.writer(csvfile, delimiter="|")
+                csv_writer.writerow(["ID", "Name", "Correction Angle (deg)", "hue_min", "hue_max", "sat_min", "sat_max", "val_min", "val_max"])
+        
+        # Write the selected values to the video_metadata.csv file
+        with open("video_metadata.csv", "a", newline="") as csvfile:
+            csv_writer = csv.writer(csvfile, delimiter="|")
+            csv_writer.writerow([video_id, video_path, "", hue_min, hue_max, sat_min, sat_max, val_min, val_max])
+        
+        break
     elif key == 27:  # Escape key
         break
 
