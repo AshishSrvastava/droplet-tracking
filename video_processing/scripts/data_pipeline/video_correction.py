@@ -272,6 +272,8 @@ def video_correction_one_pipeline(input_video_path, mode):
         csv_writer = csv.writer(csvfile, delimiter="|")
         csv_writer.writerow([video_id, input_video_path, correction_angle, hue_min, hue_max, sat_min, sat_max, val_min, val_max])
 
+
+
         
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Video Correction for droplets")
