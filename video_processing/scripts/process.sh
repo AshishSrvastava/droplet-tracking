@@ -14,3 +14,12 @@ if [ $? -ne 0 ]; then
     echo "Error: video_correction.py failed"
     exit 1
 fi
+
+# Run video_correction.py with input file
+python droplet_tracking.py "$input_file"
+
+# Check if video_correction.py was successful
+if [ $? -ne 0 ]; then
+    echo "Error: video_correction.py failed"
+    exit 1
+fi

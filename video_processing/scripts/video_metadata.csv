@@ -5,3 +5,12 @@ ID|Name|Correction Angle (deg)|hue_min|hue_max|sat_min|sat_max|val_min|val_max
 007|Glycerol_in_Castor_0_02mL_15mLmin_20230320_007.avi|0.17|63|139|0|255|0|255
 007|Glycerol_in_Castor_0_02mL_15mLmin_20230320_007.avi||63|139|0|255|0|255
 007|Glycerol_in_Castor_0_02mL_15mLmin_20230320_007.avi|0.29|63|139|0|255|0|255
+001|../data/input_videos/Glycerol_in_Castor_0.02mL_15mlmin_20220630_001.avi||63|153|0|255|0|255
+001|../data/input_videos/Glycerol_in_Castor_0.02mL_15mlmin_20220630_001.avi|0.22|63|153|0|255|0|255
+001|../data/input_videos/Glycerol_in_Castor_0.02mL_15mlmin_20220630_001.avi||63|149|0|255|0|255
+001|../data/input_videos/Glycerol_in_Castor_0.02mL_15mlmin_20220630_001.avi|0.1|63|149|0|255|0|255
+001|../data/input_videos/droplet_volume_10µL/Glycerol_in_Castor_0.01mL_10mLmin_20230328_001.mov||63|115|0|255|16|255
+001|../data/input_videos/droplet_volume_10µL/Glycerol_in_Castor_0.01mL_10mLmin_20230328_001.mov||63|112|62|255|0|255
+001|../data/input_videos/droplet_volume_10µL/Glycerol_in_Castor_0.01mL_10mLmin_20230328_001.mov|0.97|63|112|62|255|0|255
+000|../data/input_videos/Glycerol_in_Castor_0.02mL_15mlmin_20220630_000.avi||71|148|11|255|0|255
+000|../data/input_videos/Glycerol_in_Castor_0.02mL_15mlmin_20220630_000.avi|0.31|71|148|11|255|0|255
