@@ -6,6 +6,9 @@ import re
 import argparse
 import os
 
+def get_upper_lower_bounds(input_vid):
+    pass
+
 def main(input_vid, position_data_file, output_video, enable_tracked_video, show_tracked_video):
     cap = cv2.VideoCapture(input_vid)
     width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)  # 1920
@@ -52,9 +55,9 @@ def main(input_vid, position_data_file, output_video, enable_tracked_video, show
         cv2.rectangle(frame, (0, 0), (100, 30), (0, 0, 0), -1)
         cv2.putText(frame, str(frame_num), (25, 25), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
 
-        # Put correction angle in top right corner of frame
-        cv2.rectangle(frame, (int(frame.shape[1]) - 300, 0), (int(frame.shape[1]), 30), (0, 0, 0), -1)
-        cv2.putText(frame, angle_text, (int(frame.shape[1]) - 285, 25), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+        # # Put correction angle in top right corner of frame
+        # cv2.rectangle(frame, (int(frame.shape[1]) - 300, 0), (int(frame.shape[1]), 30), (0, 0, 0), -1)
+        # cv2.putText(frame, angle_text, (int(frame.shape[1]) - 285, 25), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
 
         # Convert to grayscale and apply Gaussian blur
         blurred_frame = cv2.GaussianBlur(frame, (5, 5), 0)
@@ -123,8 +126,8 @@ def main(input_vid, position_data_file, output_video, enable_tracked_video, show
             center_y = round(M["m01"] / M["m00"])
             with open(position_data_file, "a") as file:
                 frame_num = cap.get(cv2.CAP_PROP_POS_FRAMES)
-                # calculate moments of contour
-                if center_y > 600:
+                # calculate moments of contour make sure center is between y=600 and bottom of frame
+                if center_y > 600 and center_y < frame.shape[0]:
                     file.write(f"{frame_num} \t {center_x} \t {center_y} \t {width} \t {height} \t {deformation} \n")
                 else:
                     pass

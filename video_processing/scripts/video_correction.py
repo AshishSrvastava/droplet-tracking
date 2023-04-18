@@ -29,7 +29,10 @@ def select_points(event, x, y, flags, param):
             print(f"Point {len(points)}: ({x}, {y})")
             if len(points) == 2:
                 selecting = False
-                print(f"Selecting is done. Confirmed points: {points}")
+                print("\033[32m")  # Set the text color to green
+                print(f"Selecting is done. Press [Enter] to proceed with confirmed points: {points}")
+                print("\033[0m")  # Reset the text color
+                
             update_first_frame_display(x, y, points, first_frame_display, selecting)
 
     cv2.waitKey(1)
@@ -40,22 +43,21 @@ def select_points(event, x, y, flags, param):
 
 def update_first_frame_display(x, y, points, first_frame_display, selecting):
     """Update first frame display with points and green dot under cursor"""
-    first_frame_display_copy = first_frame_display.copy()
     
+    # Draw a red circle on the first frame display for selected points
     for i, point in enumerate(points):
-        cv2.circle(first_frame_display_copy, point, 5, (0, 0, 255), -1)
-        cv2.putText(first_frame_display_copy, f"Point {i + 1}", (point[0] + 5, point[1] + 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+        cv2.circle(first_frame_display, point, 5, (0, 0, 255), -1)
+        cv2.putText(first_frame_display, f"Point {i + 1}", (point[0] + 5, point[1] + 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
 
+    # Draw a green circle on the first frame display under the cursor
     if selecting:
-        cv2.circle(first_frame_display_copy, (x, y), 5, (0, 255, 0), -1)
+        first_frame_display = first_frame_display.copy()
+        cv2.circle(first_frame_display, (x, y), 5, (0, 255, 0), -1)
+    # Draw a red circle on the first frame display for selected points
     else:
         for i, point in enumerate(points):
-            cv2.circle(first_frame_display_copy, point, 5, (0, 0, 255), -1)
-            cv2.putText(first_frame_display_copy, f"Point {i + 1}", (point[0] + 5, point[1] + 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
-        cv2.circle(first_frame_display_copy, points[0], 5, (0, 0, 255), -1)
-        cv2.putText(first_frame_display_copy, "Selected", (points[0][0] + 5, points[0][1] - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
-        cv2.circle(first_frame_display_copy, points[1], 5, (0, 0, 255), -1)
-        cv2.putText(first_frame_display_copy, "Selected", (points[1][0] + 5, points[1][1] - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+            cv2.circle(first_frame_display, point, 5, (0, 0, 255), -1)
+            cv2.putText(first_frame_display, f"Point {i + 1}", (point[0] + 5, point[1] + 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
 
 
 def get_correction_angle(points):
@@ -103,12 +105,15 @@ def rotate_video(input_video_path):
     cv2.namedWindow("First Frame")
     cv2.setMouseCallback("First Frame", select_points, param=(points, selecting, first_frame_display)) # pass points to select_points
 
-    while len(points) < 2:
+    while len(points) <= 2:
         cv2.imshow("First Frame", first_frame_display)
         key = cv2.waitKey(1) & 0xFF
+        # Quit using Esc or Q
         if key == 27 or key == ord("q"):
             exit(0)
-        
+        # Press enter key to move onwards in code
+        if key == 13:
+            break
 
     # Get the correction angle
     correction_angle = get_correction_angle(points)
@@ -167,7 +172,7 @@ def on_trackbar(*args):
     val_min = cv2.getTrackbarPos("Val Min", "Reset to Defaults (Press R)")
     val_max = cv2.getTrackbarPos("Val Max", "Reset to Defaults (Press R)")
 
-    print(f"hue: ({hue_min}, {hue_max}) | sat: ({sat_min}, {sat_max}) | val: ({val_min}, {val_max})")
+    print(f"Press [Enter] to confirm | hue: ({hue_min}, {hue_max}) | sat: ({sat_min}, {sat_max}) | val: ({val_min}, {val_max})")
 
     lower = np.array([hue_min, sat_min, val_min])
     upper = np.array([hue_max, sat_max, val_max])
