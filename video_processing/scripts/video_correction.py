@@ -191,7 +191,7 @@ def get_video_thresholds(video_path):
     
     # Extract video ID from the video_path
 
-    video_path = video_path
+    # video_path = video_path
     cap = cv2.VideoCapture(video_path)
     video_id = os.path.splitext(os.path.basename(video_path))[0].split('_')[-1]
 
@@ -236,21 +236,21 @@ def get_video_thresholds(video_path):
             sat_max = cv2.getTrackbarPos("Sat Max", "Reset to Defaults (Press R)")
             val_min = cv2.getTrackbarPos("Val Min", "Reset to Defaults (Press R)")
             val_max = cv2.getTrackbarPos("Val Max", "Reset to Defaults (Press R)")
-
+            
             print("\033[32m")  # Set the text color to green
             print(f"Selected values: hue: ({hue_min}, {hue_max}) | sat: ({sat_min}, {sat_max}) | val: ({val_min}, {val_max})")
             print("\033[0m")  # Reset the text color
             
-            # Check if the video_metadata.csv file exists
-            if not os.path.exists("video_metadata.csv"):
-                with open("video_metadata.csv", "w", newline="") as csvfile:
-                    csv_writer = csv.writer(csvfile, delimiter="|")
-                    csv_writer.writerow(["ID", "Name", "Correction Angle (deg)", "hue_min", "hue_max", "sat_min", "sat_max", "val_min", "val_max"])
-            
-            # Write the selected values to the video_metadata.csv file
-            with open("video_metadata.csv", "a", newline="") as csvfile:
-                csv_writer = csv.writer(csvfile, delimiter="|")
-                csv_writer.writerow([video_id, video_path, "", hue_min, hue_max, sat_min, sat_max, val_min, val_max])
+            # # Check if the video_metadata.csv file exists
+            # if not os.path.exists("video_metadata.csv"):
+            #     with open("video_metadata.csv", "w", newline="") as csvfile:
+            #         csv_writer = csv.writer(csvfile, delimiter="|")
+            #         csv_writer.writerow(["ID", "Name", "Correction Angle (deg)", "hue_min", "hue_max", "sat_min", "sat_max", "val_min", "val_max", "y_top_bound", "y_bottom_bound"])
+           
+            # # Write the selected values to the video_metadata.csv file
+            # with open("video_metadata.csv", "a", newline="") as csvfile:
+            #     csv_writer = csv.writer(csvfile, delimiter="|")
+            #     csv_writer.writerow([video_id, video_path, "", hue_min, hue_max, sat_min, sat_max, val_min, val_max, y_top_bound, y_bottom_bound])
             
             break
         elif key == 27:  # Escape key
@@ -265,18 +265,18 @@ def video_correction_one_pipeline(input_video_path, mode):
     hue_min, hue_max, sat_min, sat_max, val_min, val_max = get_video_thresholds(input_video_path)
     print(f"Performing rotation correction on video {video_id}...")
     correction_angle = rotate_video(input_video_path) 
-    
+    y_top_bound, y_bottom_bound = [600, 1080]
     
     # Check if the video_metadata.csv file exists
     if not os.path.exists("video_metadata.csv"):
         with open("video_metadata.csv", "w", newline="") as csvfile:
             csv_writer = csv.writer(csvfile, delimiter="|")
-            csv_writer.writerow(["ID", "Name", "Correction Angle (deg)", "hue_min", "hue_max", "sat_min", "sat_max", "val_min", "val_max"])
+            csv_writer.writerow(["ID", "Name", "Correction Angle (deg)", "hue_min", "hue_max", "sat_min", "sat_max", "val_min", "val_max", "y_top_bound", "y_bottom_bound"])
 
     # Write the selected values to the video_metadata.csv file
     with open("video_metadata.csv", "a", newline="") as csvfile:
         csv_writer = csv.writer(csvfile, delimiter="|")
-        csv_writer.writerow([video_id, input_video_path, correction_angle, hue_min, hue_max, sat_min, sat_max, val_min, val_max])
+        csv_writer.writerow([video_id, input_video_path, correction_angle, hue_min, hue_max, sat_min, sat_max, val_min, val_max, y_top_bound, y_bottom_bound])
 
 
 

@@ -1,25 +1,40 @@
-import sys
+import argparse
 import csv
 import cv2
 import numpy as np
-import re
-import argparse
 import os
+import pandas as pd
+import re
+import sys
+
+
+FPS = 60 # 30 frames/second
+MIN_BLOB_AREA = 1600 # pixels
 
 def get_upper_lower_bounds(input_vid):
     pass
 
-def main(input_vid, position_data_file, output_video, enable_tracked_video, show_tracked_video):
-    cap = cv2.VideoCapture(input_vid)
+def main(input_vid_base_name, position_data_file, output_video, enable_tracked_video, show_tracked_video):
+    # Store analysis parameters in variables
+    id = input_vid_base_name.split("_")[-1]
+    # print(f"ID: {id}") # debugging
+    
+    # Get base name of the input video file
+    input_vid_path = f"rotated_videos/{input_vid_base_name}_rotated.avi"
+    print(f"Input vid path: {input_vid_path}")
+
+    cap = cv2.VideoCapture(input_vid_path)
     width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)  # 1920
     height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)  # 1080
 
     # Extract angle from input video file name
     # angle_pattern = re.compile(r"[-+]?\d*\.\d+deg")
     # Extract angle from input video file name
-    angle_pattern = re.compile(r"[-+]?\d+_\d+(?=deg)")  # Updated regular expression
-    angle_match = angle_pattern.search(input_vid)
-    angle_text = f"Angle: {angle_match.group(0).replace('_', '.')} deg" if angle_match else "Angle: N/A"
+    # angle_pattern = re.compile(r"[-+]?\d+_\d+(?=deg)")  # Updated regular expression
+    # angle_match = angle_pattern.search(input_vid)
+    # angle_text = f"Angle: {angle_match.group(0).replace('_', '.')} deg" if angle_match else "Angle: N/A"
+    
+    # Read the processing parameters from video_metadata_dummy_2.csv and save to a dataframe
     
 
 
@@ -53,7 +68,7 @@ def main(input_vid, position_data_file, output_video, enable_tracked_video, show
         
         # Put frame number in top left corner of frame
         cv2.rectangle(frame, (0, 0), (100, 30), (0, 0, 0), -1)
-        cv2.putText(frame, str(frame_num), (25, 25), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+        cv2.putText(frame, str(frame_num / FPS), (25, 25), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
 
         # # Put correction angle in top right corner of frame
         # cv2.rectangle(frame, (int(frame.shape[1]) - 300, 0), (int(frame.shape[1]), 30), (0, 0, 0), -1)
@@ -90,15 +105,15 @@ def main(input_vid, position_data_file, output_video, enable_tracked_video, show
             if area < 1600:
                 continue
             
-            # Circularity filtering
-            # Fit an ellipse to the contour
-            ellipse = cv2.fitEllipse(contour)
+            # # Circularity filtering
+            # # Fit an ellipse to the contour
+            # ellipse = cv2.fitEllipse(contour)
             
-            # Calculate the area and perimeter of the ellipse
-            area = np.pi * ellipse[1][0] * ellipse[1][1] / 4
-            perimeter = np.pi * (3 * (ellipse[1][0] + ellipse[1][1]) - np.sqrt((3 * ellipse[1][0] + ellipse[1][1]) * (ellipse[1][0] + 3 * ellipse[1][1])))
-            # Calculate the circularity of the contour
-            circularity = 4 * np.pi * area / (perimeter * perimeter)
+            # # Calculate the area and perimeter of the ellipse
+            # area = np.pi * ellipse[1][0] * ellipse[1][1] / 4
+            # perimeter = np.pi * (3 * (ellipse[1][0] + ellipse[1][1]) - np.sqrt((3 * ellipse[1][0] + ellipse[1][1]) * (ellipse[1][0] + 3 * ellipse[1][1])))
+            # # Calculate the circularity of the contour
+            # circularity = 4 * np.pi * area / (perimeter * perimeter)
 
             
             cv2.drawContours(frame, contour, -1, (0, 0, 255), 3)
@@ -111,7 +126,7 @@ def main(input_vid, position_data_file, output_video, enable_tracked_video, show
             # convert the corner points to integers
             box = np.intp(box)
             # Draw the bounding rectangle on the frame
-            cv2.drawContours(frame, [box], 0, (210, 140, 17), 2)
+            # cv2.drawContours(frame, [box], 0, (210, 140, 17), 2)
             # get dimensions of rectangle
             width, height = rect[1]
             L_maj, L_min = max(width, height), min(width, height)
@@ -179,4 +194,5 @@ if __name__ == "__main__":
         print(f"Output video file not specified, using default: tracked_videos/{base_filename}_tracked.avi")
         args.output_video = f"tracked_videos/{base_filename}_tracked.avi"
     
-    main(args.input_vid, args.position_data_file, args.output_video, args.enable_tracked_video, args.show_tracked_video)
+    input_vid_base_name = f"{base_filename}"
+    main(input_vid_base_name, args.position_data_file, args.output_video, args.enable_tracked_video, args.show_tracked_video)
