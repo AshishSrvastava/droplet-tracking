@@ -8,8 +8,14 @@ import re
 import sys
 
 
-FPS = 60 # 30 frames/second
-MIN_BLOB_AREA = 1600 # pixels
+FPS = 60 # was only 30 frames/second for ID000
+MIN_BLOB_AREA = 500 # pixels
+
+RED_COLOR = (0, 0, 255)
+PURPLE_COLOR = (255, 100, 176)
+GREEN_COLOR = (0, 255, 0)
+BLUE_COLOR = (230, 196, 120)
+WHITE_COLOR = (255, 255, 255)
 
 def get_upper_lower_bounds(input_vid):
     pass
@@ -17,26 +23,28 @@ def get_upper_lower_bounds(input_vid):
 def main(input_vid_base_name, position_data_file, output_video, enable_tracked_video, show_tracked_video):
     # Store analysis parameters in variables
     id = input_vid_base_name.split("_")[-1]
-    # print(f"ID: {id}") # debugging
+    metadata_df = pd.read_csv("video_metadata.csv", delimiter="|", dtype={"ID": str})
+    
+    # Save processing parameters for video
+    # Row with given id 
+    row = metadata_df.loc[metadata_df["ID"] == id]
+    
+    if not row.empty:
+        lower_hsv_thresholds = [row['hue_min'].values[0], row['sat_min'].values[0], row['val_min'].values[0]]
+        upper_hsv_thresholds = [row['hue_max'].values[0], row['sat_max'].values[0], row['val_max'].values[0]]
+        y_top_bound = row['y_top_bound'].values[0]
+        y_bottom_bound = row['y_bottom_bound'].values[0]
+    else:
+        print(f"Error: ID '{id}' not found in video_metadata.csv")
     
     # Get base name of the input video file
+    print(f"Base Name: {input_vid_base_name}")
     input_vid_path = f"rotated_videos/{input_vid_base_name}_rotated.avi"
     print(f"Input vid path: {input_vid_path}")
 
     cap = cv2.VideoCapture(input_vid_path)
     width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)  # 1920
     height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)  # 1080
-
-    # Extract angle from input video file name
-    # angle_pattern = re.compile(r"[-+]?\d*\.\d+deg")
-    # Extract angle from input video file name
-    # angle_pattern = re.compile(r"[-+]?\d+_\d+(?=deg)")  # Updated regular expression
-    # angle_match = angle_pattern.search(input_vid)
-    # angle_text = f"Angle: {angle_match.group(0).replace('_', '.')} deg" if angle_match else "Angle: N/A"
-    
-    # Read the processing parameters from video_metadata_dummy_2.csv and save to a dataframe
-    
-
 
     # Output video
     # Define the codec and create VideoWriter object
@@ -50,6 +58,9 @@ def main(input_vid_base_name, position_data_file, output_video, enable_tracked_v
     
     # Calculate the total number of frames in the video
     num_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+    
+    line_thickness = 2
 
     while cap.isOpened:
         ret, frame = cap.read()
@@ -68,7 +79,7 @@ def main(input_vid_base_name, position_data_file, output_video, enable_tracked_v
         
         # Put frame number in top left corner of frame
         cv2.rectangle(frame, (0, 0), (100, 30), (0, 0, 0), -1)
-        cv2.putText(frame, str(frame_num / FPS), (25, 25), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+        cv2.putText(frame, str(round(frame_num / FPS, 2)) + "s", (25, 25), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
 
         # # Put correction angle in top right corner of frame
         # cv2.rectangle(frame, (int(frame.shape[1]) - 300, 0), (int(frame.shape[1]), 30), (0, 0, 0), -1)
@@ -81,19 +92,19 @@ def main(input_vid_base_name, position_data_file, output_video, enable_tracked_v
         hsv = cv2.cvtColor(blurred_frame, cv2.COLOR_BGR2HSV)
 
         # Define range of color in HSV
-        lower_blue = np.array([63, 0, 0])
-        upper_blue = np.array([179, 255, 255])
+        lower_thresh = np.array(lower_hsv_thresholds)
+        upper_thresh = np.array(upper_hsv_thresholds)
         # Old values for glycerol droplet
         # (56, 0, 0)
         # 179, 255, 255
 
-        mask = cv2.inRange(hsv, lower_blue, upper_blue)
+        mask = cv2.inRange(hsv, lower_thresh, upper_thresh)
 
         # Find contours 
         contours, hierarchy = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         # all contours
-        cv2.drawContours(frame, contours, -1, (0, 255, 0), 1)
+        # cv2.drawContours(frame, contours, -1, (0, 255, 0), 1)
 
         # contour filtering
         for contour in contours:
@@ -102,7 +113,7 @@ def main(input_vid_base_name, position_data_file, output_video, enable_tracked_v
             # print(f"Area: {area}")
 
             # Filter out contours that are too small
-            if area < 1600:
+            if area < MIN_BLOB_AREA:
                 continue
             
             # # Circularity filtering
@@ -114,10 +125,18 @@ def main(input_vid_base_name, position_data_file, output_video, enable_tracked_v
             # perimeter = np.pi * (3 * (ellipse[1][0] + ellipse[1][1]) - np.sqrt((3 * ellipse[1][0] + ellipse[1][1]) * (ellipse[1][0] + 3 * ellipse[1][1])))
             # # Calculate the circularity of the contour
             # circularity = 4 * np.pi * area / (perimeter * perimeter)
-
             
-            cv2.drawContours(frame, contour, -1, (0, 0, 255), 3)
             
+            # output deformation parameter to a file, along with frame number and droplet position
+            M = cv2.moments(contour)
+            center_x = round(M["m10"] / M["m00"])
+            center_y = round(M["m01"] / M["m00"])
+            
+            if not (center_y > y_bottom_bound and center_y < y_top_bound):
+                continue
+            
+            # Draw the contour on the frame
+            cv2.drawContours(frame, contour, -1, BLUE_COLOR, 3)
             # Taylor Deformation Parameter
             # Calculate the minimum bounding rectangle of the contour
             rect = cv2.minAreaRect(contour)
@@ -126,7 +145,7 @@ def main(input_vid_base_name, position_data_file, output_video, enable_tracked_v
             # convert the corner points to integers
             box = np.intp(box)
             # Draw the bounding rectangle on the frame
-            # cv2.drawContours(frame, [box], 0, (210, 140, 17), 2)
+            # cv2.drawContours(frame, [box], 0, BLUE_COLOR, 2)
             # get dimensions of rectangle
             width, height = rect[1]
             L_maj, L_min = max(width, height), min(width, height)
@@ -135,14 +154,12 @@ def main(input_vid_base_name, position_data_file, output_video, enable_tracked_v
             # L_maj = major axis length (width)
             # L_min = minor axis length (height)
             deformation = (L_maj - L_min)/(L_maj + L_min)
-            # output deformation parameter to a file, along with frame number and droplet position
-            M = cv2.moments(contour)
-            center_x = round(M["m10"] / M["m00"])
-            center_y = round(M["m01"] / M["m00"])
+            
+            # print(f"Centroid position must be between {y_bottom_bound} < {center_y} < {y_top_bound}")
             with open(position_data_file, "a") as file:
                 frame_num = cap.get(cv2.CAP_PROP_POS_FRAMES)
                 # calculate moments of contour make sure center is between y=600 and bottom of frame
-                if center_y > 600 and center_y < frame.shape[0]:
+                if center_y > y_bottom_bound and center_y < y_top_bound:
                     file.write(f"{frame_num} \t {center_x} \t {center_y} \t {width} \t {height} \t {deformation} \n")
                 else:
                     pass
@@ -154,9 +171,13 @@ def main(input_vid_base_name, position_data_file, output_video, enable_tracked_v
                 frame,
                 (round(M["m10"] / M["m00"]), round(M["m01"] / M["m00"])),
                 5,
-                (0, 255, 0),
+                WHITE_COLOR,
                 -1,
             )
+            
+            # Draw red lines at y_bottom_bound and y_top_bound
+            cv2.line(frame, (0, y_bottom_bound), (int(frame.shape[1]), y_bottom_bound), GREEN_COLOR, thickness=line_thickness)
+            cv2.line(frame, (0, y_top_bound), (int(frame.shape[1]), y_top_bound), GREEN_COLOR, thickness=line_thickness)
             
             # Display output frame
             if show_tracked_video:

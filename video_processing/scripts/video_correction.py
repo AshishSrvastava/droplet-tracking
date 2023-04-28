@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import pandas as pd
 import sys
 import os
 import csv
@@ -18,13 +19,17 @@ def create_folders():
 
 def select_points(event, x, y, flags, param):
     """Mouse event callback function"""
-    points, selecting, first_frame_display = param  # retrieve points from param
+    points, selecting, first_frame_display, constrain_x = param
 
     if event == cv2.EVENT_MOUSEMOVE:
+        if len(points) == 1 and constrain_x:
+            x = points[0][0]
         update_first_frame_display(x, y, points, first_frame_display, selecting)
 
     if event == cv2.EVENT_LBUTTONDOWN:
         if len(points) < 2:
+            if len(points) == 1 and constrain_x:
+                x = points[0][0]
             points.append((x, y))
             print(f"Point {len(points)}: ({x}, {y})")
             if len(points) == 2:
@@ -32,13 +37,46 @@ def select_points(event, x, y, flags, param):
                 print("\033[32m")  # Set the text color to green
                 print(f"Selecting is done. Press [Enter] to proceed with confirmed points: {points}")
                 print("\033[0m")  # Reset the text color
-                
+                # param[1] = selecting # update selecting in param
+
             update_first_frame_display(x, y, points, first_frame_display, selecting)
 
     cv2.waitKey(1)
     return points
 
+def get_channel_bounds(input_video_path, correction_angle):
+    points = []
+    selecting = True
+    constrain_x = True 
 
+    cap = cv2.VideoCapture(input_video_path)
+
+    if not cap.isOpened():
+        print(f"Error: Could not open {input_video_path}")
+        return
+
+    ret, first_frame = cap.read()
+    first_frame = rotate_frame(first_frame, correction_angle)
+
+    first_frame_display = first_frame.copy()
+
+    cv2.namedWindow("Select Channel Bounds")
+    cv2.setMouseCallback("Select Channel Bounds", select_points, param=(points, selecting, first_frame_display, constrain_x))
+
+    while len(points) < 2:
+        cv2.imshow("Select Channel Bounds", first_frame_display)
+        key = cv2.waitKey(1) & 0xFF
+
+        if key == 27 or key == ord("q"):
+            exit(0)
+
+        if key == 13:
+            break
+
+    y_top_bound, y_bottom_bound = points[0][1], points[1][1]
+    cap.release()
+    cv2.destroyAllWindows()
+    return y_top_bound, y_bottom_bound
 
 
 def update_first_frame_display(x, y, points, first_frame_display, selecting):
@@ -62,8 +100,6 @@ def update_first_frame_display(x, y, points, first_frame_display, selecting):
 
 def get_correction_angle(points):
     """Get the correction angle from the selected points"""
-    # print(f"Points passed into get_correction_angle: {points}") # debug
-    # print(f"get_correction_angle called. Points: {points}") # debug
     x1, y1 = points[0]
     x2, y2 = points[1]
     angle = math.degrees(math.atan2(y2 - y1, x2 - x1))
@@ -87,6 +123,7 @@ def rotate_video(input_video_path):
     """Rotate a video and save the rotated video to the 'rotated_videos' folder"""
     points = []
     selecting = True
+    constrain_x = False
 
     # Load the video
     cap = cv2.VideoCapture(input_video_path)
@@ -103,7 +140,7 @@ def rotate_video(input_video_path):
 
     # Show first frame for user to select points
     cv2.namedWindow("First Frame")
-    cv2.setMouseCallback("First Frame", select_points, param=(points, selecting, first_frame_display)) # pass points to select_points
+    cv2.setMouseCallback("First Frame", select_points, param=(points, selecting, first_frame_display, constrain_x)) # pass points to select_points
 
     while len(points) <= 2:
         cv2.imshow("First Frame", first_frame_display)
@@ -147,7 +184,7 @@ def rotate_video(input_video_path):
         remaining_width = bar_width - filled_width
         print(f"[{'=' * filled_width}{' ' * remaining_width}] {progress}%\r", end="")
 
-
+    print('\n')
     cap.release()
     out.release()
     cv2.destroyAllWindows()
@@ -206,8 +243,6 @@ def get_video_thresholds(video_path):
 
     cap.release()
 
-    # print(image.shape) # debug
-
     cv2.namedWindow("Reset to Defaults (Press R)", cv2.WINDOW_NORMAL)
     cv2.resizeWindow("Reset to Defaults (Press R)", 640, 480)
 
@@ -236,21 +271,10 @@ def get_video_thresholds(video_path):
             sat_max = cv2.getTrackbarPos("Sat Max", "Reset to Defaults (Press R)")
             val_min = cv2.getTrackbarPos("Val Min", "Reset to Defaults (Press R)")
             val_max = cv2.getTrackbarPos("Val Max", "Reset to Defaults (Press R)")
-            
+
             print("\033[32m")  # Set the text color to green
             print(f"Selected values: hue: ({hue_min}, {hue_max}) | sat: ({sat_min}, {sat_max}) | val: ({val_min}, {val_max})")
             print("\033[0m")  # Reset the text color
-            
-            # # Check if the video_metadata.csv file exists
-            # if not os.path.exists("video_metadata.csv"):
-            #     with open("video_metadata.csv", "w", newline="") as csvfile:
-            #         csv_writer = csv.writer(csvfile, delimiter="|")
-            #         csv_writer.writerow(["ID", "Name", "Correction Angle (deg)", "hue_min", "hue_max", "sat_min", "sat_max", "val_min", "val_max", "y_top_bound", "y_bottom_bound"])
-           
-            # # Write the selected values to the video_metadata.csv file
-            # with open("video_metadata.csv", "a", newline="") as csvfile:
-            #     csv_writer = csv.writer(csvfile, delimiter="|")
-            #     csv_writer.writerow([video_id, video_path, "", hue_min, hue_max, sat_min, sat_max, val_min, val_max, y_top_bound, y_bottom_bound])
             
             break
         elif key == 27:  # Escape key
@@ -260,12 +284,13 @@ def get_video_thresholds(video_path):
     return hue_min, hue_max, sat_min, sat_max, val_min, val_max
     
 def video_correction_one_pipeline(input_video_path, mode):
-    video_id = os.path.splitext(os.path.basename(input_video_path))[0].split('_')[-1] 
+    video_id = str(os.path.splitext(os.path.basename(input_video_path))[0].split('_')[-1])
     print(f"Thresholding video {video_id}...")
     hue_min, hue_max, sat_min, sat_max, val_min, val_max = get_video_thresholds(input_video_path)
     print(f"Performing rotation correction on video {video_id}...")
     correction_angle = rotate_video(input_video_path) 
-    y_top_bound, y_bottom_bound = [600, 1080]
+    print(f"Performing channel cropping on video {video_id}...") 
+    y_top_bound, y_bottom_bound = get_channel_bounds(input_video_path, correction_angle)
     
     # Check if the video_metadata.csv file exists
     if not os.path.exists("video_metadata.csv"):
@@ -273,14 +298,23 @@ def video_correction_one_pipeline(input_video_path, mode):
             csv_writer = csv.writer(csvfile, delimiter="|")
             csv_writer.writerow(["ID", "Name", "Correction Angle (deg)", "hue_min", "hue_max", "sat_min", "sat_max", "val_min", "val_max", "y_top_bound", "y_bottom_bound"])
 
-    # Write the selected values to the video_metadata.csv file
-    with open("video_metadata.csv", "a", newline="") as csvfile:
-        csv_writer = csv.writer(csvfile, delimiter="|")
-        csv_writer.writerow([video_id, input_video_path, correction_angle, hue_min, hue_max, sat_min, sat_max, val_min, val_max, y_top_bound, y_bottom_bound])
+    # Read existing video metadata into a pandas dataframe
+    metadata_df = pd.read_csv("video_metadata.csv", delimiter="|", dtype={"ID":str})
+    
+    # Check if video ID already exists in metadata
+    if video_id in metadata_df["ID"].values.tolist():
+        # If video ID already exists, overwrite the existing row
+        metadata_df.loc[metadata_df["ID"] == str(video_id), ["Name", "Correction Angle (deg)", "hue_min", "hue_max", "sat_min", "sat_max", "val_min", "val_max", "y_top_bound", "y_bottom_bound"]] = [input_video_path, correction_angle, hue_min, hue_max, sat_min, sat_max, val_min, val_max, y_top_bound, y_bottom_bound]
+    else:
+        # If the video ID does not exist, append a new row
+        new_row = pd.DataFrame([[video_id, input_video_path, correction_angle, hue_min, hue_max, sat_min, sat_max, val_min, val_max, y_top_bound, y_bottom_bound]], columns=["ID", "Name", "Correction Angle (deg)", "hue_min", "hue_max", "sat_min", "sat_max", "val_min", "val_max", "y_top_bound", "y_bottom_bound"])
+        # metadata_df = metadata_df.append(new_row, ignore_index=True)
+        metadata_df = pd.concat([metadata_df, new_row], ignore_index=True)
+    # Save the updated dataframe to the csv file
+    metadata_df.to_csv("video_metadata.csv", index=False, sep="|")
 
 
 
-        
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Video Correction for droplets")
     parser.add_argument("input_vid", help="Path to the input video file")

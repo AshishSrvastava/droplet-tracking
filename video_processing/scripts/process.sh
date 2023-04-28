@@ -16,7 +16,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # Run video_correction.py with input file
-python droplet_tracking.py "$input_file"
+python droplet_tracking.py "$input_file" --show_tracked_video
 
 # Check if video_correction.py was successful
 if [ $? -ne 0 ]; then
